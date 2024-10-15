@@ -1,0 +1,18 @@
+{
+  "main": "index.html",
+  "logo": "logo.png",
+  "preload": "preload.js",
+  "features": [
+    {
+      "code": "星星剪贴板",
+      "explain": "管理剪贴板历史",
+      "cmds": ["星星剪贴板", "剪贴板历史", "clipboard"]
+    }
+  ],
+  "permissions": [
+    "clipboardRead",
+    "clipboardWrite",
+    "fileSystem",
+    "showNotification"
+  ]
+}

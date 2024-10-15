@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星星剪贴板</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- 添加 Font Awesome 库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <h1 class="app-title">
+        <img src="logo.png" alt="Logo" class="logo">
+        <span>星星剪贴板</span>
+      </h1>
+      <div id="sidebar-buttons">
+        <button id="showHistory" class="sidebar-btn active"><i class="fas fa-history"></i> 历史记录</button>
+        <button id="showFavorites" class="sidebar-btn"><i class="fas fa-star"></i> 收藏</button>
+      </div>
+      <button id="showSettings" class="sidebar-btn settings-btn"><i class="fas fa-cog"></i> 设置</button>
+    </aside>
+    <div id="main-content">
+      <header>
+        <input type="text" id="search" placeholder="搜索...">
+        <button id="clearHistory">清空历史</button>
+      </header>
+      <main>
+        <div id="history" class="content-section active"></div>
+        <div id="favorites" class="content-section"></div>
+        <div id="settings" class="content-section">
+          <h2>设置</h2>
+          <div class="settings-container">
+            <div class="setting-item">
+              <label for="maxRecords">最大记录数：</label>
+              <input type="number" id="maxRecords" min="1" max="10000">
+            </div>
+            <!-- 在这里可以轻松添加更多设置项 -->
+          </div>
+          <div class="settings-actions">
+            <button id="saveSettings" class="primary-btn">保存设置</button>
+            <button id="resetSettings" class="secondary-btn">重置默认</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>
