@@ -129,21 +129,42 @@ function searchHistory(keyword) {
 function exportSingleItem(index) {
   if (index >= 0 && index < clipboardHistory.length) {
     const item = clipboardHistory[index];
-    const content = JSON.stringify(item, null, 2);
-    const fileName = `clipboard_item_${Date.now()}.json`;
     
-    // 使用 uTools API 保存文件
-    const filePath = utools.showSaveDialog({
-      title: '导出单条记录',
-      defaultPath: fileName,
-    //   filters: [{ name: 'JSON', extensions: ['json'] }]
-    })
+    if (item.type === 'image') {
+      // 处理图片导出
+      const imageData = item.content.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(imageData, 'base64');
+      const fileName = `clipboard_image_${Date.now()}.png`;
+      
+      const filePath = utools.showSaveDialog({
+        title: '导出图片',
+        defaultPath: fileName,
+        filters: [{ name: 'Images', extensions: ['png'] }]
+      });
 
-    if (filePath) {
+      if (filePath) {
+        fs.writeFileSync(filePath, buffer);
+        console.log('图片已保存:', filePath);
+      } else {
+        console.log('保存被取消');
+      }
+    } else {
+      // 处理其他类型的导出(保持原有逻辑)
+      const content = JSON.stringify(item, null, 2);
+      const fileName = `clipboard_item_${Date.now()}.json`;
+      
+      const filePath = utools.showSaveDialog({
+        title: '导出单条记录',
+        defaultPath: fileName,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      });
+
+      if (filePath) {
         fs.writeFileSync(filePath, content);
         console.log('文件已保存:', filePath);
-    } else {
+      } else {
         console.log('保存被取消');
+      }
     }
   } else {
     console.error('无效的历史记录索引');

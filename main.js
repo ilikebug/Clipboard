@@ -244,7 +244,7 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
     </div>
   `).join('');
 
-  // 修改 favorite-item 的点击事件
+  // 修改 favorite-item 的点击事件ƒ
   favoritesElement.querySelectorAll('.favorite-item').forEach(item => {
     item.addEventListener('click', (e) => {
       if (!e.target.closest('button')) {  // 如果点击的不是按钮
