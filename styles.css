@@ -440,3 +440,26 @@ button:hover {
 .setting-item input[type="checkbox"] {
   margin-left: 10px;
 }
+
+/* 在文件末尾添加以下样式 */
+
+/* 移除所有元素的默认焦点样式 */
+*:focus {
+  outline: none;
+}
+
+/* 为了保持可访问性，我们可以为键盘焦点添加一个自定义样式 */
+*:focus-visible {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
+
+/* 特别是对于侧边栏按钮，我们可以完全移除焦点样式 */
+.sidebar-btn:focus {
+  outline: none;
+}
+
+/* 如果您想为键盘用户提供一些视觉反馈，可以使用以下样式 */
+.sidebar-btn:focus-visible {
+  box-shadow: 0 0 0 2px #4a90e2;
+}
