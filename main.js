@@ -4,33 +4,57 @@ const { loadSettings, saveSettings: saveSettingsToStorage, loadClipboardHistory,
 let currentSearchKeyword = '';
 // 在文件顶部添加一个新的变量
 let currentSelectedIndex = -1;
+// 在文件顶部添加一个新的变量来跟踪当前选中的按钮
+let currentSelectedButton = 'history';
+
+// 添加这个新函数来处理Tab键的切换
+function handleTabNavigation(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    currentSelectedButton = currentSelectedButton === 'history' ? 'favorites' : 'history';
+    showSection(currentSelectedButton);
+  }
+}
 
 // 添加这个新函数来处理键盘事件
 function handleKeyboardNavigation(e) {
-  const historyItems = document.querySelectorAll('.history-item');
-  if (historyItems.length === 0) return;
+  if (e.key === 'Tab') {
+    handleTabNavigation(e);
+    return;
+  }
+
+  const activeSection = document.querySelector('.content-section.active');
+  const items = activeSection.querySelectorAll('.history-item, .favorite-item');
+  if (items.length === 0) return;
 
   if (e.key === 'ArrowUp') {
     e.preventDefault();
-    currentSelectedIndex = (currentSelectedIndex > 0) ? currentSelectedIndex - 1 : historyItems.length - 1;
+    currentSelectedIndex = (currentSelectedIndex > 0) ? currentSelectedIndex - 1 : items.length - 1;
   } else if (e.key === 'ArrowDown') {
     e.preventDefault();
-    currentSelectedIndex = (currentSelectedIndex < historyItems.length - 1) ? currentSelectedIndex + 1 : 0;
+    currentSelectedIndex = (currentSelectedIndex < items.length - 1) ? currentSelectedIndex + 1 : 0;
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    if (currentSelectedIndex >= 0 && currentSelectedIndex < historyItems.length) {
-      copyItem(currentSelectedIndex);
+    if (currentSelectedIndex >= 0 && currentSelectedIndex < items.length) {
+      const selectedItem = items[currentSelectedIndex];
+      const index = parseInt(selectedItem.getAttribute('data-index'), 10);
+      if (activeSection.id === 'history') {
+        copyItem(index);
+      } else if (activeSection.id === 'favorites') {
+        copyFavoriteItem(index);
+      }
     }
   }
 
   updateSelectedItem();
-  scrollToSelectedItem(); // 添加这一行
+  scrollToSelectedItem();
 }
 
 // 添加这个新函数来更新选中项的视觉效果
 function updateSelectedItem() {
-  const historyItems = document.querySelectorAll('.history-item');
-  historyItems.forEach((item, index) => {
+  const activeSection = document.querySelector('.content-section.active');
+  const items = activeSection.querySelectorAll('.history-item, .favorite-item');
+  items.forEach((item, index) => {
     if (index === currentSelectedIndex) {
       item.classList.add('selected');
     } else {
@@ -51,13 +75,16 @@ function showSection(sectionId) {
   });
   document.querySelector(`#show${sectionId.charAt(0).toUpperCase() + sectionId.slice(1)}`).classList.add('active');
 
+  // 更新当前选中的按钮
+  currentSelectedButton = sectionId;
+
   // 控制清空历史按钮和搜索框的可见性
   const clearHistoryBtn = document.getElementById('clearHistory');
   const searchInput = document.getElementById('search');
   if (sectionId === 'history' || sectionId === 'favorites') {
     clearHistoryBtn.style.display = sectionId === 'history' ? 'block' : 'none';
     searchInput.style.display = 'block';
-    // 切换页面时，保持搜索框的内容并触发搜索
+    // 切换页面时,保持搜索框的内容并触发搜索
     searchInput.value = currentSearchKeyword;
     
     // 根据当前页面设置搜索框的占位符文本
@@ -73,14 +100,23 @@ function showSection(sectionId) {
     searchInput.style.display = 'none';
   }
 
-  // 如果显示的是设置页面，加载设置
+  // 如果显示的是设置页,加载设置
   if (sectionId === 'settings') {
     loadSettingsUI();
   }
 
-  if (sectionId === 'history') {
-    currentSelectedIndex = -1;
-    updateSelectedItem();
+  // 重置选中索引并更新选中项
+  currentSelectedIndex = -1;
+  updateSelectedItem();
+  
+  // 如果是历史记录或收藏页面,将焦点设置到第一个项目
+  if (sectionId === 'history' || sectionId === 'favorites') {
+    const items = document.querySelectorAll(`#${sectionId} .history-item, #${sectionId} .favorite-item`);
+    if (items.length > 0) {
+      currentSelectedIndex = 0;
+      updateSelectedItem();
+      scrollToSelectedItem();
+    }
   }
 }
 
@@ -107,28 +143,22 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
     </div>
   `).join('');
 
-  // 为收藏按钮添加事件监听器
-  historyElement.querySelectorAll('.favorite-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const index = parseInt(e.target.getAttribute('data-index'), 10);
-      addToFavorites(history[index]);
-      updateFavorites();
-    });
-  });
-
-  // 修改 history-item 的点击事件
+  // 修改事件监听器
   historyElement.querySelectorAll('.history-item').forEach(item => {
     item.addEventListener('click', (e) => {
       if (!e.target.closest('button')) {  // 如果点击的不是按钮
-        const index = parseInt(e.currentTarget.getAttribute('data-index'), 10);
+        e.preventDefault();
+        e.stopPropagation();
+        const index = parseInt(item.getAttribute('data-index'), 10);
         copyItem(index);
       }
     });
   });
 
-  // 修改复制按钮的点击事件
+  // 为每个按钮添加单独的事件监听器
   historyElement.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
       copyItem(index);
     });
@@ -136,6 +166,7 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
 
   historyElement.querySelectorAll('.remove-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
       removeItem(index);
     });
@@ -143,12 +174,22 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
 
   historyElement.querySelectorAll('.export-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
       exportSingleItem(index);
     });
   });
 
-  // 在历史列表后，如果当前显示的是历史页面，则滚动到顶部
+  historyElement.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(e.target.getAttribute('data-index'), 10);
+      addToFavorites(history[index]);
+      updateFavorites();
+    });
+  });
+
+  // 在历史列表后,如果当前显示的是历史页面,则滚动到顶部
   if (document.getElementById('history').classList.contains('active')) {
     document.getElementById('history').scrollTop = 0;
   }
@@ -172,12 +213,34 @@ function renderContent(item) {
   }
 }
 
+// 添加这个新函数来获取正确的快捷键组合
+function getShortcutKey(key) {
+  if (utools.isMacOS()) {
+    return ['command', key];
+  } else {
+    // Windows 和 Linux
+    return ['ctrl', key];
+  }
+}
+
 // 修改 copyItem 函数
 function copyItem(index) {
   const history = window.preload.getClipboardHistory();
   if (index >= 0 && index < history.length) {
     window.preload.copyToClipboard(history[index]);
-    exitPlugin(); // 添加这行
+    const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
+    console.log('Paste after copy setting:', pasteAfterCopy);
+    if (pasteAfterCopy) {
+      console.log('Attempting to paste...');
+      utools.hideMainWindow();
+      setTimeout(() => {
+        const [modifier, key] = getShortcutKey('v');
+        utools.simulateKeyboardTap(key, modifier);
+        setTimeout(exitPlugin, 100);
+      }, 100);
+    } else {
+      exitPlugin();
+    }
   } else {
     console.error('无效的历史记录索引');
   }
@@ -201,11 +264,14 @@ function clearAllHistory() {
 
 function saveSettings() {
   const maxRecords = parseInt(document.getElementById('maxRecords').value, 10);
+  const pasteAfterCopy = document.getElementById('pasteAfterCopy').checked;
+  console.log('Saving settings:', { maxRecords, pasteAfterCopy });
   const newSettings = {
-    maxRecords: maxRecords
+    maxRecords: maxRecords,
+    pasteAfterCopy: pasteAfterCopy
   };
-  // 在这里可以轻松添加更多设置项的保存
-  setSettings(newSettings);
+  window.preload.setSettings(newSettings);
+  window.preload.setPasteAfterCopySetting(pasteAfterCopy);
   updateHistoryWithNewMaxRecords(maxRecords);
   alert('设置已保存');
 }
@@ -244,38 +310,39 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
     </div>
   `).join('');
 
-  // 修改 favorite-item 的点击事件ƒ
+  // 修改事件监听器
   favoritesElement.querySelectorAll('.favorite-item').forEach(item => {
     item.addEventListener('click', (e) => {
       if (!e.target.closest('button')) {  // 如果点击的不是按钮
+        e.preventDefault();
+        e.stopPropagation();
         const index = parseInt(item.getAttribute('data-index'), 10);
-        window.preload.copyToClipboard(favorites[index]);
-        exitPlugin(); // 添加这行
+        copyFavoriteItem(index);
       }
     });
   });
 
-  // 修改复制按钮的点击事件
+  // 为每个按钮添加单独的事件监听器
   favoritesElement.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
-      window.preload.copyToClipboard(favorites[index]);
-      exitPlugin(); // 添加这行
+      copyFavoriteItem(index);
     });
   });
 
   favoritesElement.querySelectorAll('.remove-favorite-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
       removeFromFavorites(index);
       updateFavorites();
     });
   });
 
-  // 添加编辑标签按钮的事件监听器
   favoritesElement.querySelectorAll('.edit-tags-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      e.stopPropagation(); // 阻止事件冒泡
+      e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
       editTags(index);
     });
@@ -289,7 +356,7 @@ function initializeApp() {
   updateHistory();
   updateFavorites();
 
-  // 添加侧边栏按钮事件监听器
+  // 添加侧边按钮事件监听器
   document.getElementById('showHistory').addEventListener('click', () => showSection('history'));
   document.getElementById('showFavorites').addEventListener('click', () => showSection('favorites'));
   document.getElementById('showSettings').addEventListener('click', () => showSection('settings'));
@@ -335,7 +402,13 @@ function initializeApp() {
   }, 100);
 
   // 添加键盘事件监听器
-  document.addEventListener('keydown', handleKeyboardNavigation);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      handleTabNavigation(e);
+    } else {
+      handleKeyboardNavigation(e);
+    }
+  });
 }
 
 initializeApp();
@@ -352,7 +425,7 @@ function adjustSidebarWidth() {
     }
   });
 
-  // 设置一个固定的宽度，确保能容纳最长的按钮文本
+  // 设置一个固定的宽度,确保能容纳最长的按钮文本
   const fixedWidth = Math.max(maxWidth + 40, 160); // 至少160px宽
   sidebar.style.width = `${fixedWidth}px`;
 
@@ -364,9 +437,12 @@ function adjustSidebarWidth() {
 
 // 添加以下函数来加载设置
 function loadSettingsUI() {
-  const settings = getSettings();
+  const settings = window.preload.getSettings();
   document.getElementById('maxRecords').value = settings.maxRecords;
-  // 在这里可以轻松添加更多设置项的加载
+  const pasteAfterCopyCheckbox = document.getElementById('pasteAfterCopy');
+  if (pasteAfterCopyCheckbox) {
+    pasteAfterCopyCheckbox.checked = settings.pasteAfterCopy;
+  }
 }
 
 // 添加一个新的函数来执行搜索
@@ -476,7 +552,7 @@ document.head.appendChild(style);
 
 // 添加重置设置的函数
 function resetSettings() {
-  const defaultSettings = { maxRecords: 1000 };
+  const defaultSettings = { maxRecords: 1000, pasteAfterCopy: false };
   setSettings(defaultSettings);
   loadSettingsUI();
   alert('设置已重置为默认值');
@@ -484,8 +560,32 @@ function resetSettings() {
 
 // 在文件中添加这个新函数
 function scrollToSelectedItem() {
-  const selectedItem = document.querySelector('.history-item.selected');
+  const activeSection = document.querySelector('.content-section.active');
+  const selectedItem = activeSection.querySelector('.history-item.selected, .favorite-item.selected');
   if (selectedItem) {
     selectedItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// 添加 copyFavoriteItem 函数
+function copyFavoriteItem(index) {
+  const favorites = window.preload.getFavorites();
+  if (index >= 0 && index < favorites.length) {
+    window.preload.copyToClipboard(favorites[index]);
+    const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
+    console.log('Paste after copy setting:', pasteAfterCopy);
+    if (pasteAfterCopy) {
+      console.log('Attempting to paste...');
+      utools.hideMainWindow();
+      setTimeout(() => {
+        const [modifier, key] = getShortcutKey('v');
+        utools.simulateKeyboardTap(key, modifier);
+        setTimeout(exitPlugin, 100);
+      }, 100);
+    } else {
+      exitPlugin();
+    }
+  } else {
+    console.error('无效的收藏记录索引');
   }
 }

@@ -253,34 +253,40 @@ button:hover {
 .settings-container {
   display: grid;
   gap: 20px;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .setting-item {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .setting-item label {
   font-weight: 500;
-  margin-bottom: 5px;
   color: #555;
+  flex: 1;
 }
 
-.setting-item input[type="number"],
-.setting-item input[type="text"],
-.setting-item select {
-  padding: 8px 12px;
+.setting-item input[type="number"] {
+  width: 80px;
+  padding: 5px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
-  width: 100%;
+}
+
+.setting-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
 }
 
 .settings-actions {
   margin-top: 30px;
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  justify-content: center;
+  gap: 20px;
 }
 
 .primary-btn, .secondary-btn {
@@ -363,7 +369,7 @@ button:hover {
 
 /* 在文件末尾添加或修改以下样式 */
 
-/* 设置按钮样式 */
+/* 设置按钮样 */
 .settings-btn {
   margin-top: auto;
   position: relative;
@@ -428,4 +434,9 @@ button:hover {
   background-color: #fff2e6; /* 浅橙色背景 */
   border: 2px solid #ffa000; /* 橙色边框 */
   box-shadow: 0 0 5px rgba(255, 160, 0, 0.5); /* 轻微的橙色阴影 */
+}
+
+/* 在文件末尾添加以下样式 */
+.setting-item input[type="checkbox"] {
+  margin-left: 10px;
 }

@@ -36,11 +36,14 @@
               <label for="maxRecords">最大记录数：</label>
               <input type="number" id="maxRecords" min="1" max="10000">
             </div>
-            <!-- 在这里可以轻松添加更多设置项 -->
+            <div class="setting-item">
+              <label for="pasteAfterCopy">复制后立即粘贴：</label>
+              <input type="checkbox" id="pasteAfterCopy">
+            </div>
           </div>
           <div class="settings-actions">
             <button id="saveSettings" class="primary-btn">保存设置</button>
-            <button id="resetSettings" class="secondary-btn">重置默认</button>
+            <button id="resetSettings" class="secondary-btn">重置设置</button>
           </div>
         </div>
       </main>

@@ -3,7 +3,7 @@ const path = require('path');
 const { clipboard, nativeImage, dialog } = require('electron');
 
 let clipboardHistory = [];
-let settings = { maxRecords: 1000 };
+let settings = { maxRecords: 1000, pasteAfterCopy: false };
 let isSearching = false;
 let favorites = [];
 
@@ -11,7 +11,7 @@ let favorites = [];
 function loadSettings() {
   const savedSettings = utools.dbStorage.getItem('clipboard_settings');
   if (savedSettings) {
-    settings = JSON.parse(savedSettings);
+    settings = { ...settings, ...JSON.parse(savedSettings) };
   }
 }
 
@@ -265,5 +265,10 @@ window.preload = {
   setClipboardHistory: (newHistory) => {
     clipboardHistory = newHistory;
     saveClipboardHistory();
+  },
+  getPasteAfterCopySetting: () => settings.pasteAfterCopy,
+  setPasteAfterCopySetting: (value) => {
+    settings.pasteAfterCopy = value;
+    saveSettings();
   },
 };
