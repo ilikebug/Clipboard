@@ -100,7 +100,7 @@ function showSection(sectionId) {
     searchInput.style.display = 'none';
   }
 
-  // 如果显示的是设置页,��载设置
+  // 如果显示的是设置页,载设置
   if (sectionId === 'settings') {
     loadSettingsUI();
   }
@@ -128,8 +128,14 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
     return;
   }
 
-  historyElement.innerHTML = history.map((item, index) => `
-    <div class="history-item ${index === currentSelectedIndex ? 'selected' : ''}" data-index="${index}">
+  // 使用DocumentFragment来减少DOM操作
+  const fragment = document.createDocumentFragment();
+  
+  history.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = `history-item ${index === currentSelectedIndex ? 'selected' : ''}`;
+    div.setAttribute('data-index', index);
+    div.innerHTML = `
       <div class="content" title="${escapeHtml(item.content)}">
         ${renderContent(item)}
       </div>
@@ -140,54 +146,43 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
         <button class="favorite-btn" data-index="${index}">收藏</button>
         <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
       </div>
-    </div>
-  `).join('');
-
-  // 修改事件监听器
-  historyElement.querySelectorAll('.history-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (!e.target.closest('button')) {  // 如果点击的不是按钮
+    `;
+    
+    // 添加事件监听器
+    div.addEventListener('click', (e) => {
+      if (!e.target.closest('button')) {
         e.preventDefault();
         e.stopPropagation();
-        const index = parseInt(item.getAttribute('data-index'), 10);
         copyItem(index);
       }
     });
-  });
-
-  // 为每个按钮添加单独的事件监听器
-  historyElement.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    
+    div.querySelector('.copy-btn').addEventListener('click', (e) => {
       e.stopPropagation();
-      const index = parseInt(e.target.getAttribute('data-index'), 10);
       copyItem(index);
     });
-  });
-
-  historyElement.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    
+    div.querySelector('.remove-btn').addEventListener('click', (e) => {
       e.stopPropagation();
-      const index = parseInt(e.target.getAttribute('data-index'), 10);
       removeItem(index);
     });
-  });
-
-  historyElement.querySelectorAll('.export-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    
+    div.querySelector('.export-btn').addEventListener('click', (e) => {
       e.stopPropagation();
-      const index = parseInt(e.target.getAttribute('data-index'), 10);
       exportSingleItem(index);
     });
-  });
-
-  historyElement.querySelectorAll('.favorite-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    
+    div.querySelector('.favorite-btn').addEventListener('click', (e) => {
       e.stopPropagation();
-      const index = parseInt(e.target.getAttribute('data-index'), 10);
       addToFavorites(history[index]);
       updateFavorites();
     });
+    
+    fragment.appendChild(div);
   });
+
+  historyElement.innerHTML = '';
+  historyElement.appendChild(fragment);
 
   // 在历史列表后,如果当前显示的是历史页面,则滚动到顶部
   if (document.getElementById('history').classList.contains('active')) {
@@ -197,7 +192,7 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
   // 在历史列表更新后,重置当前选中索引
   currentSelectedIndex = -1;
   updateSelectedItem();
-  scrollToSelectedItem(); // 添加这一行
+  scrollToSelectedItem();
 }
 
 function renderContent(item) {
@@ -229,15 +224,9 @@ function copyItem(index) {
   if (index >= 0 && index < history.length) {
     window.preload.copyToClipboard(history[index]);
     const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
-    console.log('Paste after copy setting:', pasteAfterCopy);
     if (pasteAfterCopy) {
-      console.log('Attempting to paste...');
       utools.hideMainWindow();
-      setTimeout(() => {
-        const [modifier, key] = getShortcutKey('v');
-        utools.simulateKeyboardTap(key, modifier);
-        setTimeout(exitPlugin, 100);
-      }, 100);
+      pasteContent();
     } else {
       exitPlugin();
     }
@@ -246,9 +235,32 @@ function copyItem(index) {
   }
 }
 
-// 添加新的 exitPlugin 函数
+// 修改 copyFavoriteItem 函数
+function copyFavoriteItem(index) {
+  const favorites = window.preload.getFavorites();
+  if (index >= 0 && index < favorites.length) {
+    window.preload.copyToClipboard(favorites[index]);
+    const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
+    if (pasteAfterCopy) {
+      utools.hideMainWindow();
+      pasteContent();
+    } else {
+      exitPlugin();
+    }
+  } else {
+    console.error('无效的收藏记录索引');
+  }
+}
+
+// 新增 pasteContent 函数
+function pasteContent() {
+  const [modifier, key] = getShortcutKey('v');
+  utools.simulateKeyboardTap(key, modifier);
+  exitPlugin();
+}
+
+// 修改 exitPlugin 函数
 function exitPlugin() {
-  utools.hideMainWindow();
   utools.outPlugin();
 }
 
@@ -457,7 +469,7 @@ function performSearch(keyword, sectionId) {
   }
 }
 
-// 修改 renderTags 函数
+// 修 renderTags 函数
 function renderTags(tags) {
   if (!tags || !Array.isArray(tags)) {
     return '';
@@ -573,15 +585,9 @@ function copyFavoriteItem(index) {
   if (index >= 0 && index < favorites.length) {
     window.preload.copyToClipboard(favorites[index]);
     const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
-    console.log('Paste after copy setting:', pasteAfterCopy);
     if (pasteAfterCopy) {
-      console.log('Attempting to paste...');
       utools.hideMainWindow();
-      setTimeout(() => {
-        const [modifier, key] = getShortcutKey('v');
-        utools.simulateKeyboardTap(key, modifier);
-        setTimeout(exitPlugin, 100);
-      }, 100);
+      pasteContent();
     } else {
       exitPlugin();
     }
@@ -599,3 +605,24 @@ function escapeHtml(unsafe) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// 添加防抖函数
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// 修改搜索事件监听器
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', debounce((e) => {
+  currentSearchKeyword = e.target.value.trim();
+  const activeSection = document.querySelector('.content-section.active').id;
+  performSearch(currentSearchKeyword, activeSection);
+}, 300)); // 300ms的延迟
