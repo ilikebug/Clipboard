@@ -183,6 +183,27 @@ main {
   background-color: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e9ecef;
+  max-height: 100px; /* 限制内容高度 */
+  overflow: hidden; /* 隐藏超出部分 */
+  position: relative; /* 为悬停效果做准备 */
+  transition: max-height 0.3s ease; /* 添加过渡效果 */
+}
+
+.history-item .content:hover, .favorite-item .content:hover {
+  max-height: none; /* 鼠标悬停时取消高度限制 */
+}
+
+.history-item .content::after, .favorite-item .content::after {
+  content: '...';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 0 5px;
+  background-color: #f8f9fa;
+}
+
+.history-item .content:hover::after, .favorite-item .content:hover::after {
+  display: none; /* 鼠标悬停时隐藏省略号 */
 }
 
 .history-item .content pre, .favorite-item .content pre {

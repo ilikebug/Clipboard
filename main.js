@@ -100,7 +100,7 @@ function showSection(sectionId) {
     searchInput.style.display = 'none';
   }
 
-  // 如果显示的是设置页,加载设置
+  // 如果显示的是设置页,��载设置
   if (sectionId === 'settings') {
     loadSettingsUI();
   }
@@ -130,7 +130,7 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
 
   historyElement.innerHTML = history.map((item, index) => `
     <div class="history-item ${index === currentSelectedIndex ? 'selected' : ''}" data-index="${index}">
-      <div class="content">
+      <div class="content" title="${escapeHtml(item.content)}">
         ${renderContent(item)}
       </div>
       <div class="actions">
@@ -295,7 +295,7 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
 
   favoritesElement.innerHTML = favorites.map((item, index) => `
     <div class="history-item favorite-item" data-index="${index}">
-      <div class="content">
+      <div class="content" title="${escapeHtml(item.content)}">
         ${renderContent(item)}
       </div>
       <div class="tags">
@@ -588,4 +588,14 @@ function copyFavoriteItem(index) {
   } else {
     console.error('无效的收藏记录索引');
   }
+}
+
+// 添加一个辅助函数来转义HTML
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
