@@ -359,7 +359,7 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
       if (item.type === 'text' && item.content) {
         openLink(item.content);
       } else {
-        console.error('该收藏项不是有效的链接');
+        showToast('无效的URL');
       }
     });
   });
