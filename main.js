@@ -6,6 +6,8 @@ let currentSearchKeyword = '';
 let currentSelectedIndex = -1;
 // 在文件顶部添加一个新的变量来跟踪当前选中的按钮
 let currentSelectedButton = 'history';
+// 在文件顶部添加一个全局变量来保存当前的搜索结果
+let currentSearchResults = [];
 
 // 添加这个新函数来处理Tab键的切换
 function handleTabNavigation(e) {
@@ -89,7 +91,7 @@ function showSection(sectionId) {
     searchInput.style.display = 'block';
     importFavoritesBtn.style.display = sectionId === 'favorites' ? 'block' : 'none';
     exportFavoritesBtn.style.display = sectionId === 'favorites' ? 'block' : 'none';
-    // 切换页面时,保持搜索框的内容并触发搜索
+    // 切换页面时,保持搜索框的内容并触发索
     searchInput.value = currentSearchKeyword;
     
     // 根据当前页面设置搜索框的占位符文本
@@ -127,31 +129,31 @@ function showSection(sectionId) {
   }
 }
 
-function updateHistory() {
-  const history = window.preload.getClipboardHistory();
+function updateHistory(history = window.preload.getClipboardHistory()) {
   const historyElement = document.getElementById('history');
   
-  if (history === null || history.length === 0) {
+  if (!history || history.length === 0) {
     historyElement.innerHTML = '<div class="no-results">没有结果</div>';
+    currentSearchResults = []; // 更新 currentSearchResults
     return;
   }
 
-  // 只更新第一个元素,如果它不存在或者内容不同
-  const firstItem = historyElement.querySelector('.history-item');
-  if (!firstItem || firstItem.getAttribute('data-content') !== history[0].content) {
-    const newItem = createHistoryItem(history[0], 0);
-    if (firstItem) {
-      historyElement.insertBefore(newItem, firstItem);
-    } else {
-      historyElement.appendChild(newItem);
-    }
-  }
+  historyElement.innerHTML = history.map((item, index) => `
+    <div class="history-item" data-index="${index}">
+      <div class="content" title="${escapeHtml(item.content)}">
+        ${renderContent(item)}
+      </div>
+      <div class="actions">
+        <button class="copy-btn" data-index="${index}">复制</button>
+        <button class="export-btn" data-index="${index}">导出</button>
+        <button class="favorite-btn" data-index="${index}">收藏</button>
+        <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
+      </div>
+    </div>
+  `).join('');
 
-  // 确保列表中的项目数量不超过设置的最大记录数
-  const maxRecords = window.preload.getSettings().maxRecords;
-  while (historyElement.children.length > maxRecords) {
-    historyElement.removeChild(historyElement.lastChild);
-  }
+  currentSearchResults = history; // 更新 currentSearchResults
+  addHistoryItemEventListeners();
 }
 
 function renderContent(item) {
@@ -187,27 +189,31 @@ function getShortcutKey(key) {
 
 // 修改 copyItem 函数
 function copyItem(index) {
-  const history = window.preload.getClipboardHistory();
-  if (index >= 0 && index < history.length) {
-    window.preload.copyToClipboard(history[index]);
+  if (index >= 0 && index < currentSearchResults.length) {
+    window.preload.copyToClipboard(currentSearchResults[index]);
     const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
     utools.hideMainWindow();
+    currentSearchKeyword = '';
+    document.getElementById('search').value = '';
+    performSearch(currentSearchKeyword, 'history');
     if (pasteAfterCopy) { 
       pasteContent();
     }
     exitPlugin();
   } else {
-    console.error('无效的史记录索引');
+    console.error('无效的历史记录索引');
   }
 }
 
 // 修改 copyFavoriteItem 函数
 function copyFavoriteItem(index) {
-  const favorites = window.preload.getFavorites();
-  if (index >= 0 && index < favorites.length) {
-    window.preload.copyToClipboard(favorites[index]);
+  if (index >= 0 && index < currentSearchResults.length) {
+    window.preload.copyToClipboard(currentSearchResults[index]);
     const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
     utools.hideMainWindow();
+    currentSearchKeyword = '';
+    document.getElementById('search').value = '';
+    performSearch(currentSearchKeyword, 'favorites');
     if (pasteAfterCopy) {
       pasteContent();
     }
@@ -225,12 +231,7 @@ function pasteContent() {
 
 // 修改 exitPlugin 函数
 function exitPlugin() {
-  utools.outPlugin();
-}
-
-function removeItem(index) {
-  removeHistoryItem(index);
-  updateHistory();
+  // utools.outPlugin();
 }
 
 // 创建模态对话框
@@ -303,6 +304,7 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
 
   if (favorites.length === 0) {
     favoritesElement.innerHTML = '<div class="no-results">没有收藏项目</div>';
+    currentSearchResults = []; // 更新 currentSearchResults
     return;
   }
 
@@ -318,16 +320,17 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
         <button class="copy-btn" data-index="${index}">复制</button>
         <button class="remove-favorite-btn" data-index="${index}">取消收藏</button>
         <button class="edit-tags-btn" data-index="${index}">编辑标签</button>
-        <button class="open-link-btn" data-index="${index}">打开链接</button> <!-- 添加打开链接按钮 -->
+        <button class="open-link-btn" data-index="${index}">打开链接</button>
         <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
       </div>
     </div>
   `).join('');
 
-  // 修改事件监听器
+  currentSearchResults = favorites; // 更新 currentSearchResults
+  // 重新绑定事件监听器
   favoritesElement.querySelectorAll('.favorite-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      if (!e.target.closest('button')) {  // 如果点击的不是按钮
+      if (!e.target.closest('button')) {
         e.preventDefault();
         e.stopPropagation();
         const index = parseInt(item.getAttribute('data-index'), 10);
@@ -349,8 +352,12 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
-      removeFromFavorites(index);
-      updateFavorites();
+      const itemToRemove = currentSearchResults[index];
+      const fullIndex = window.preload.getFavorites().findIndex(fav => fav.content === itemToRemove.content);
+      if (fullIndex !== -1) {
+        removeFromFavorites(fullIndex);
+        performSearch(currentSearchKeyword, 'favorites'); // 重新执行搜索以更新列表
+      }
     });
   });
 
@@ -502,15 +509,14 @@ function loadSettingsUI() {
 // 添加一个新的函数来执行搜索
 function performSearch(keyword, sectionId) {
   if (sectionId === 'history') {
-    const searchResults = window.preload.searchHistory(keyword);
-    console.log('Search results in main:', searchResults); // 添加日志
-    updateHistory(searchResults);
+    currentSearchResults = window.preload.searchHistory(keyword);
+    updateHistory(currentSearchResults);
   } else if (sectionId === 'favorites') {
     const [searchKeyword, tagKeyword] = keyword.split('#').map(k => k.trim());
-    const searchResults = window.preload.searchFavorites(searchKeyword, tagKeyword);
-    console.log('Favorites search results:', searchResults); // 添加日志
-    updateFavorites(searchResults);
+    currentSearchResults = window.preload.searchFavorites(searchKeyword, tagKeyword);
+    updateFavorites(currentSearchResults);
   }
+  addHistoryItemEventListeners();
 }
 
 // 修 renderTags 函数
@@ -623,22 +629,6 @@ function scrollToSelectedItem() {
   }
 }
 
-// 添加 copyFavoriteItem 函数
-function copyFavoriteItem(index) {
-  const favorites = window.preload.getFavorites();
-  if (index >= 0 && index < favorites.length) {
-    window.preload.copyToClipboard(favorites[index]);
-    const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
-    utools.hideMainWindow();
-    if (pasteAfterCopy) {
-      pasteContent();
-    }
-    exitPlugin();
-  } else {
-    console.error('无效的收藏记录索引');
-  }
-}
-
 // 添加一个辅助函数来转义HTML
 function escapeHtml(unsafe) {
   return unsafe
@@ -722,7 +712,6 @@ function createHistoryItem(item, index) {
     </div>
     <div class="actions">
       <button class="copy-btn" data-index="${index}">复制</button>
-      <button class="remove-btn" data-index="${index}">删除</button>
       <button class="export-btn" data-index="${index}">导出</button>
       <button class="favorite-btn" data-index="${index}">收藏</button>
       <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
@@ -743,11 +732,6 @@ function createHistoryItem(item, index) {
     copyItem(index);
   });
   
-  div.querySelector('.remove-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    removeItem(index);
-  });
-  
   div.querySelector('.export-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     exportSingleItem(index);
@@ -762,34 +746,6 @@ function createHistoryItem(item, index) {
   });
 
   return div;
-}
-
-// 修改 updateHistory 函数
-function updateHistory(history = window.preload.getClipboardHistory()) {
-  const historyElement = document.getElementById('history');
-  
-  if (!history || history.length === 0) {
-    historyElement.innerHTML = '<div class="no-results">没有结果</div>';
-    return;
-  }
-
-  historyElement.innerHTML = history.map((item, index) => `
-    <div class="history-item" data-index="${index}">
-      <div class="content" title="${escapeHtml(item.content)}">
-        ${renderContent(item)}
-      </div>
-      <div class="actions">
-        <button class="copy-btn" data-index="${index}">复制</button>
-        <button class="remove-btn" data-index="${index}">删除</button>
-        <button class="export-btn" data-index="${index}">导出</button>
-        <button class="favorite-btn" data-index="${index}">收藏</button>
-        <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
-      </div>
-    </div>
-  `).join('');
-
-  // 重新添加事件监听器
-  addHistoryItemEventListeners();
 }
 
 // 添加新的函数来为历史项添加事件监听器
@@ -811,14 +767,6 @@ function addHistoryItemEventListeners() {
       e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
       copyItem(index);
-    });
-  });
-
-  historyElement.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const index = parseInt(e.target.getAttribute('data-index'), 10);
-      removeItem(index);
     });
   });
 
