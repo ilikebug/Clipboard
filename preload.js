@@ -46,9 +46,12 @@ function addToClipboardHistory(type, content) {
   // 检查是否已存在相同内容的记录
   const existingIndex = clipboardHistory.findIndex(item => item.content === content);
   
-  // 如果存在,不进行任何操作
-  if (existingIndex !== -1) {
+  if (existingIndex === 0) {
+    // 如果已经在最上面,不进行任何操作
     return;
+  } else if (existingIndex !== -1) {
+    // 如果存在但不在最上面,删除旧记录
+    clipboardHistory.splice(existingIndex, 1);
   }
   
   // 添加新记录到顶部
