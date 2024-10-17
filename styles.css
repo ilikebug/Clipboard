@@ -464,23 +464,26 @@ button:hover {
 
 /* 在文件末尾添加以下样式 */
 
-/* 移除所有元素的默认焦点样式 */
+/* 移除所有元素的焦点样式 */
 *:focus {
-  outline: none;
+  outline: none !important;
 }
 
-/* 为了保持可访问性，我们可以为键盘焦点添加一个自定义样式 */
-*:focus-visible {
-  outline: 2px solid #4a90e2;
-  outline-offset: 2px;
+/* 特别是对于侧边栏按钮,移除所有可能的焦点和交互样式 */
+.sidebar-btn:focus,
+.sidebar-btn:active,
+.sidebar-btn:focus-visible,
+.sidebar-btn::-moz-focus-inner {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-/* 特别是对于侧边栏按钮，我们可以完全移除焦点样式 */
-.sidebar-btn:focus {
-  outline: none;
-}
-
-/* 如果您想为键盘用户提供一些视觉反馈，可以使用以下样式 */
-.sidebar-btn:focus-visible {
-  box-shadow: 0 0 0 2px #4a90e2;
+/* 移除之前添加的 focus-visible 样式 */
+.sidebar-btn:focus-visible:not(:active) {
+  box-shadow: none !important;
 }

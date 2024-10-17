@@ -7,6 +7,9 @@ let settings = { maxRecords: 1000, pasteAfterCopy: false };
 let isSearching = false;
 let favorites = [];
 
+// 在文件的顶部添加这个全局变量
+let lastClipboardContent = '';
+
 // 加载设置
 function loadSettings() {
   const savedSettings = utools.dbStorage.getItem('clipboard_settings');
@@ -225,7 +228,7 @@ utools.onPluginReady(() => {
   setInterval(checkClipboard, 100);
 });
 
-// 添加新的搜索函数，支持标签搜索
+// 添加新的搜索函数，持标签搜索
 function searchFavorites(keyword, tag = '') {
   if (!keyword.trim() && !tag.trim()) {
     return favorites;
@@ -278,36 +281,6 @@ window.preload = {
     saveSettings();
   },
 };
-
-// 修改checkClipboard函数
-function checkClipboard() {
-  const text = clipboard.readText();
-  const image = clipboard.readImage();
-  const files = clipboard.readBuffer('FileNameW').toString('ucs2').replace(/\0/g, '').split('\r\n').filter(Boolean);
-
-  let newItem = null;
-
-  if (text && text !== lastClipboardContent) {
-    newItem = { type: 'text', content: text };
-    lastClipboardContent = text;
-  } else if (!image.isEmpty() && image.toDataURL() !== lastClipboardContent) {
-    newItem = { type: 'image', content: image.toDataURL() };
-    lastClipboardContent = newItem.content;
-  } else if (files.length > 0) {
-    const filesContent = files.join(',');
-    if (filesContent !== lastClipboardContent) {
-      newItem = { type: 'files', content: filesContent };
-      lastClipboardContent = filesContent;
-    }
-  }
-
-  if (newItem) {
-    addToClipboardHistory(newItem.type, newItem.content);
-    return true;
-  }
-
-  return false;
-}
 
 // 修改定时检查剪贴板的逻辑
 let lastCheckTime = 0;

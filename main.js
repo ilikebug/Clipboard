@@ -170,12 +170,14 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
     div.querySelector('.export-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       exportSingleItem(index);
+      showToast('导出成功');
     });
     
     div.querySelector('.favorite-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       addToFavorites(history[index]);
       updateFavorites();
+      showToast('收藏成功');
     });
     
     fragment.appendChild(div);
@@ -403,7 +405,7 @@ function initializeApp() {
 
   // 可以在这里执行一些清理操作
   utools.onPluginOut(() => {
-    // 可以在这里执行一些清理操作
+    // 可以��这里执行一些清理��作
   });
 
   // 修改定时检查剪贴板的逻辑
@@ -626,3 +628,43 @@ searchInput.addEventListener('input', debounce((e) => {
   const activeSection = document.querySelector('.content-section.active').id;
   performSearch(currentSearchKeyword, activeSection);
 }, 300)); // 300ms的延迟
+
+// 在文件末尾添加 showToast 函数
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 100);
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      document.body.removeChild(toast);
+    }, 300);
+  }, 2000);
+}
+
+// 在文件末尾添加以下 CSS
+const toastStyle = document.createElement('style');
+toastStyle.textContent = `
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  .toast.show {
+    opacity: 1;
+  }
+`;
+document.head.appendChild(toastStyle);
