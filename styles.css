@@ -487,3 +487,15 @@ button:hover {
 .sidebar-btn:focus-visible:not(:active) {
   box-shadow: none !important;
 }
+
+/* 在文件末尾添加或修改以下样式 */
+
+/* 修改删除按钮的样式 */
+.history-item .remove-btn {
+  background-color: #ff4757; /* 红色背景 */
+  color: white;
+}
+
+.history-item .remove-btn:hover {
+  background-color: #ff6b81; /* 悬停时稍浅的红色 */
+}

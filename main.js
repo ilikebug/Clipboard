@@ -183,7 +183,7 @@ function copyItem(index) {
       exitPlugin();
     }
   } else {
-    console.error('无效的历史记录索引');
+    console.error('无效的史记录索引');
   }
 }
 
@@ -221,9 +221,46 @@ function removeItem(index) {
   updateHistory();
 }
 
+// 创建模态对话框
+function createConfirmationModal(message, onConfirm) {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <p>${message}</p>
+      <div class="modal-actions">
+        <button id="modalCancel">取消</button>
+        <button id="modalConfirm">确定</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const confirmButton = modal.querySelector('#modalConfirm');
+  const cancelButton = modal.querySelector('#modalCancel');
+
+  confirmButton.addEventListener('click', () => {
+    onConfirm();
+    removeModal(modal);
+  });
+
+  cancelButton.addEventListener('click', () => {
+    removeModal(modal);
+  });
+}
+
+// 移除模态对话框
+function removeModal(modal) {
+  document.body.removeChild(modal);
+}
+
+// 修改 clearAllHistory 函数
 function clearAllHistory() {
-  clearHistory();
-  updateHistory();
+  createConfirmationModal('确定要清空所有历史记录吗？', () => {
+    clearHistory();
+    updateHistory();
+    showToast('历史记录已清空');
+  });
 }
 
 function saveSettings() {
@@ -269,6 +306,7 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
         <button class="copy-btn" data-index="${index}">复制</button>
         <button class="remove-favorite-btn" data-index="${index}">取消收藏</button>
         <button class="edit-tags-btn" data-index="${index}">编辑标签</button>
+        <button class="open-link-btn" data-index="${index}">打开链接</button> <!-- 添加打开链接按钮 -->
         <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
       </div>
     </div>
@@ -309,6 +347,20 @@ function updateFavorites(favorites = window.preload.getFavorites()) {
       e.stopPropagation();
       const index = parseInt(e.target.getAttribute('data-index'), 10);
       editTags(index);
+    });
+  });
+
+  // 为打开链接按钮添加事件监听器
+  favoritesElement.querySelectorAll('.open-link-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(e.target.getAttribute('data-index'), 10);
+      const item = favorites[index];
+      if (item.type === 'text' && item.content) {
+        openLink(item.content);
+      } else {
+        console.error('该收藏项不是有效的链接');
+      }
     });
   });
 }
@@ -460,7 +512,7 @@ function editTags(index) {
   const currentTags = item.tags ? item.tags.join(', ') : '';
   
   const modal = createModal('编辑标签', `
-    <input type="text" id="tagInput" value="${currentTags}" placeholder="输入标签，用逗号分隔">
+    <input type="text" id="tagInput" value="${currentTags}" placeholder="输入标签用逗号分隔">
   `);
 
   const confirmButton = modal.querySelector('#modalConfirm');
@@ -751,4 +803,15 @@ function addHistoryItemEventListeners() {
       showToast('收藏成功');
     });
   });
+}
+
+// 打开链接
+function openLink(url) {
+  try {
+    // 使用URL构造函数来验证URL
+    const validUrl = new URL(url);
+    utools.shellOpenExternal(validUrl.href);
+  } catch (e) {
+    showToast('无效的URL');
+  }
 }
