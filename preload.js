@@ -126,7 +126,7 @@ function clearHistory() {
 
 // 搜索历史记录
 function searchHistory(keyword) {
-  if (!keyword.trim()) {
+  if (!keyword || !keyword.trim()) {
     return clipboardHistory;
   }
   
@@ -135,6 +135,7 @@ function searchHistory(keyword) {
     if (item.type === 'text' || item.type === 'files') {
       return item.content.toLowerCase().includes(lowerKeyword);
     } else if (item.type === 'image') {
+      // 对于图片,我们可以搜索时间戳
       return new Date(item.timestamp).toLocaleString().toLowerCase().includes(lowerKeyword);
     }
     return false;
@@ -280,7 +281,11 @@ window.preload = {
   copyToClipboard,
   removeHistoryItem,
   clearHistory,
-  searchHistory,
+  searchHistory: (keyword) => {
+    const results = searchHistory(keyword);
+    console.log('Search results:', results); // 添加日志
+    return results;
+  },
   getClipboardHistory: () => clipboardHistory,
   getSettings: () => settings,
   setSettings: (newSettings) => {

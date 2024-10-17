@@ -413,10 +413,12 @@ function loadSettingsUI() {
 function performSearch(keyword, sectionId) {
   if (sectionId === 'history') {
     const searchResults = window.preload.searchHistory(keyword);
+    console.log('Search results in main:', searchResults); // 添加日志
     updateHistory(searchResults);
   } else if (sectionId === 'favorites') {
     const [searchKeyword, tagKeyword] = keyword.split('#').map(k => k.trim());
     const searchResults = window.preload.searchFavorites(searchKeyword, tagKeyword);
+    console.log('Favorites search results:', searchResults); // 添加日志
     updateFavorites(searchResults);
   }
 }
@@ -671,4 +673,82 @@ function createHistoryItem(item, index) {
   });
 
   return div;
+}
+
+// 修改 updateHistory 函数
+function updateHistory(history = window.preload.getClipboardHistory()) {
+  const historyElement = document.getElementById('history');
+  
+  if (!history || history.length === 0) {
+    historyElement.innerHTML = '<div class="no-results">没有结果</div>';
+    return;
+  }
+
+  historyElement.innerHTML = history.map((item, index) => `
+    <div class="history-item" data-index="${index}">
+      <div class="content" title="${escapeHtml(item.content)}">
+        ${renderContent(item)}
+      </div>
+      <div class="actions">
+        <button class="copy-btn" data-index="${index}">复制</button>
+        <button class="remove-btn" data-index="${index}">删除</button>
+        <button class="export-btn" data-index="${index}">导出</button>
+        <button class="favorite-btn" data-index="${index}">收藏</button>
+        <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
+      </div>
+    </div>
+  `).join('');
+
+  // 重新添加事件监听器
+  addHistoryItemEventListeners();
+}
+
+// 添加新的函数来为历史项添加事件监听器
+function addHistoryItemEventListeners() {
+  const historyElement = document.getElementById('history');
+  historyElement.querySelectorAll('.history-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (!e.target.closest('button')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const index = parseInt(item.getAttribute('data-index'), 10);
+        copyItem(index);
+      }
+    });
+  });
+
+  historyElement.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(e.target.getAttribute('data-index'), 10);
+      copyItem(index);
+    });
+  });
+
+  historyElement.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(e.target.getAttribute('data-index'), 10);
+      removeItem(index);
+    });
+  });
+
+  historyElement.querySelectorAll('.export-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(e.target.getAttribute('data-index'), 10);
+      exportSingleItem(index);
+      showToast('导出成功');
+    });
+  });
+
+  historyElement.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(e.target.getAttribute('data-index'), 10);
+      addToFavorites(window.preload.getClipboardHistory()[index]);
+      updateFavorites();
+      showToast('收藏成功');
+    });
+  });
 }
