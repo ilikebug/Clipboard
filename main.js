@@ -518,7 +518,7 @@ document.head.appendChild(style);
 
 // 添加重置设置的函数
 function resetSettings() {
-  const defaultSettings = { maxRecords: 100, pasteAfterCopy: false };
+  const defaultSettings = { maxRecords: 100, pasteAfterCopy: true };
   setSettings(defaultSettings);
   loadSettingsUI();
   alert('设置已重置为默认值');
