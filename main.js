@@ -81,9 +81,14 @@ function showSection(sectionId) {
   // 控制清空历史按钮和搜索框的可见性
   const clearHistoryBtn = document.getElementById('clearHistory');
   const searchInput = document.getElementById('search');
+  const importFavoritesBtn = document.getElementById('importFavorites');
+  const exportFavoritesBtn = document.getElementById('exportFavorites');
+
   if (sectionId === 'history' || sectionId === 'favorites') {
     clearHistoryBtn.style.display = sectionId === 'history' ? 'block' : 'none';
     searchInput.style.display = 'block';
+    importFavoritesBtn.style.display = sectionId === 'favorites' ? 'block' : 'none';
+    exportFavoritesBtn.style.display = sectionId === 'favorites' ? 'block' : 'none';
     // 切换页面时,保持搜索框的内容并触发搜索
     searchInput.value = currentSearchKeyword;
     
@@ -98,6 +103,8 @@ function showSection(sectionId) {
   } else {
     clearHistoryBtn.style.display = 'none';
     searchInput.style.display = 'none';
+    importFavoritesBtn.style.display = 'none';
+    exportFavoritesBtn.style.display = 'none';
   }
 
   // 如果显示的是设置页,载设置
@@ -431,6 +438,32 @@ function initializeApp() {
       handleTabNavigation(e);
     } else {
       handleKeyboardNavigation(e);
+    }
+  });
+
+  // 添加导入和导出按钮事件监听器
+  document.getElementById('importFavorites').addEventListener('click', () => {
+    const filePath = utools.showOpenDialog({
+      title: '导入收藏列表',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (filePath) {
+      window.preload.importFavorites(filePath[0]);
+      updateFavorites();
+      showToast('收藏列表导入成功');
+    }
+  });
+
+  document.getElementById('exportFavorites').addEventListener('click', () => {
+    const filePath = utools.showSaveDialog({
+      title: '导出收藏列表',
+      defaultPath: 'favorites.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    });
+    if (filePath) {
+      window.preload.exportFavorites(filePath);
+      showToast('收藏列表导出成功');
     }
   });
 }

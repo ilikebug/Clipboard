@@ -274,6 +274,40 @@ function searchFavorites(keyword, tag = '') {
   });
 }
 
+// 导入收藏列表
+function importFavorites(filePath) {
+  try {
+    const data = fs.readFileSync(filePath, 'utf-8');
+    const importedFavorites = JSON.parse(data);
+    importedFavorites.forEach(item => {
+      addToFavorites({
+        content: item.content,
+        type: item.type,
+        tags: item.tags.split(',').map(tag => tag.trim())
+      });
+    });
+    saveFavorites();
+    console.log('收藏列表导入成功');
+  } catch (error) {
+    console.error('导入收藏列表失败:', error);
+  }
+}
+
+// 导出收藏列表
+function exportFavorites(filePath) {
+  try {
+    const data = JSON.stringify(favorites.map(item => ({
+      content: item.content,
+      type: item.type,
+      tags: item.tags.join(', ')
+    })), null, 2);
+    fs.writeFileSync(filePath, data);
+    console.log('收藏列表导出成功');
+  } catch (error) {
+    console.error('导出收藏列表失败:', error);
+  }
+}
+
 // 修改 window.preload 对象
 window.preload = {
   loadSettings,
@@ -320,5 +354,7 @@ window.preload = {
       return true;
     }
     return false;
-  }
+  },
+  importFavorites,
+  exportFavorites
 };
