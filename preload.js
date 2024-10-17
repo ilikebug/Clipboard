@@ -9,6 +9,7 @@ let favorites = [];
 
 // 在文件的顶部添加这个全局变量
 let lastClipboardContent = '';
+let lastFileContent = '';
 
 // 加载设置
 function loadSettings() {
@@ -63,7 +64,6 @@ function addToClipboardHistory(type, content) {
 function checkClipboard() {
   const text = clipboard.readText();
   const image = clipboard.readImage();
-  const files = clipboard.readBuffer('FileNameW').toString('ucs2').replace(/\0/g, '').split('\r\n').filter(Boolean);
 
   let newItem = null;
 
@@ -73,12 +73,6 @@ function checkClipboard() {
   } else if (!image.isEmpty() && image.toDataURL() !== lastClipboardContent) {
     newItem = { type: 'image', content: image.toDataURL() };
     lastClipboardContent = newItem.content;
-  } else if (files.length > 0) {
-    const filesContent = files.join(',');
-    if (filesContent !== lastClipboardContent) {
-      newItem = { type: 'files', content: filesContent };
-      lastClipboardContent = filesContent;
-    }
   }
 
   if (newItem) {
@@ -97,8 +91,6 @@ function copyToClipboard(item) {
     } else if (item.type === 'image') {
       const image = nativeImage.createFromDataURL(item.content);
       clipboard.writeImage(image);
-    } else if (item.type === 'files') {
-      clipboard.writeText(item.content); // 简化为文本复制
     }
   } catch (error) {
     console.error('复制到剪贴板失败:', error);
