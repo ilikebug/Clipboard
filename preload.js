@@ -7,9 +7,11 @@ let settings = { maxRecords: 1000, pasteAfterCopy: false };
 let isSearching = false;
 let favorites = [];
 
-// 在文件的顶部添加这个全局变量
-let lastClipboardContent = '';
-let lastFileContent = '';
+// 在文件顶部添加这些变量
+let lastCheckTime = 0;
+let lastUpdateTime = 0;
+const CHECK_INTERVAL = 100; // 100ms
+const UPDATE_INTERVAL = 1000; // 1000ms, 即1秒
 
 // 加载设置
 function loadSettings() {
@@ -44,15 +46,15 @@ function addToClipboardHistory(type, content) {
   // 检查是否已存在相同内容的记录
   const existingIndex = clipboardHistory.findIndex(item => item.content === content);
   
-  // 如果存在，先删除旧记录
+  // 如果存在,不进行任何操作
   if (existingIndex !== -1) {
-    clipboardHistory.splice(existingIndex, 1);
+    return;
   }
   
   // 添加新记录到顶部
   clipboardHistory.unshift({ type, content, timestamp });
   
-  // 如果超出最大记录数，删除最旧的记录
+  // 如果超出最大记录数,删除最旧的记录
   if (clipboardHistory.length > settings.maxRecords) {
     clipboardHistory.pop();
   }
@@ -62,22 +64,33 @@ function addToClipboardHistory(type, content) {
 
 // 检查剪贴板
 function checkClipboard() {
+  const now = Date.now();
+  if (now - lastCheckTime < CHECK_INTERVAL) {
+    return false;
+  }
+  lastCheckTime = now;
+
+  const files = clipboard.readBuffer('FileNameW').toString('ucs2').replace(/\0/g, '').split('\r\n').filter(Boolean);
   const text = clipboard.readText();
   const image = clipboard.readImage();
-
   let newItem = null;
 
-  if (text && text !== lastClipboardContent) {
+  if (files.length > 0) {
+    const filesContent = files.join(', ');
+    newItem = { type: 'files', content: filesContent };
+  } else if (text) {
     newItem = { type: 'text', content: text };
-    lastClipboardContent = text;
-  } else if (!image.isEmpty() && image.toDataURL() !== lastClipboardContent) {
-    newItem = { type: 'image', content: image.toDataURL() };
-    lastClipboardContent = newItem.content;
+  } else if (!image.isEmpty()) {
+    const imageDataUrl = image.toDataURL();
+    newItem = { type: 'image', content: imageDataUrl };
   }
 
-  if (newItem) {
+  if (newItem && (clipboardHistory.length === 0 || newItem.content !== clipboardHistory[0].content)) {
     addToClipboardHistory(newItem.type, newItem.content);
-    return true;
+    if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+      lastUpdateTime = now;
+      return true;
+    }
   }
 
   return false;
@@ -91,6 +104,8 @@ function copyToClipboard(item) {
     } else if (item.type === 'image') {
       const image = nativeImage.createFromDataURL(item.content);
       clipboard.writeImage(image);
+    } else if (item.type === 'files') {
+      clipboard.writeBuffer('FileNameW', Buffer.from(item.content.split(', ').join('\0') + '\0', 'ucs2'));
     }
   } catch (error) {
     console.error('复制到剪贴板失败:', error);
@@ -149,20 +164,37 @@ function exportSingleItem(index) {
       } else {
         console.log('保存被取消');
       }
-    } else {
-      // 处理其他类型的导出(保持原有逻辑)
-      const content = JSON.stringify(item, null, 2);
-      const fileName = `clipboard_item_${Date.now()}.json`;
+    } else if (item.type === 'files') {
+      // 处理文件导出
+      const content = item.content;
+      const fileName = `clipboard_files_${Date.now()}.txt`;
       
       const filePath = utools.showSaveDialog({
-        title: '导出单条记录',
+        title: '导出文件列表',
         defaultPath: fileName,
-        filters: [{ name: 'JSON', extensions: ['json'] }]
+        filters: [{ name: 'Text', extensions: ['txt'] }]
       });
 
       if (filePath) {
         fs.writeFileSync(filePath, content);
-        console.log('文件已保存:', filePath);
+        console.log('文件列表已保存:', filePath);
+      } else {
+        console.log('保存被取消');
+      }
+    } else {
+      // 处理文本导出
+      const content = item.content;
+      const fileName = `clipboard_text_${Date.now()}.txt`;
+      
+      const filePath = utools.showSaveDialog({
+        title: '导出文本',
+        defaultPath: fileName,
+        filters: [{ name: 'Text', extensions: ['txt'] }]
+      });
+
+      if (filePath) {
+        fs.writeFileSync(filePath, content);
+        console.log('文本已保存:', filePath);
       } else {
         console.log('保存被取消');
       }
@@ -272,22 +304,13 @@ window.preload = {
     settings.pasteAfterCopy = value;
     saveSettings();
   },
-};
-
-// 修改定时检查剪贴板的逻辑
-let lastCheckTime = 0;
-const CHECK_INTERVAL = 100; // 100ms
-
-function checkClipboardWrapper() {
-  const now = Date.now();
-  if (now - lastCheckTime >= CHECK_INTERVAL) {
-    if (checkClipboard()) {
-      updateHistory();
+  // 添加新方法
+  shouldUpdateHistory: () => {
+    const now = Date.now();
+    if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+      lastUpdateTime = now;
+      return true;
     }
-    lastCheckTime = now;
+    return false;
   }
-  requestAnimationFrame(checkClipboardWrapper);
-}
-
-// 在初始化时启动检查
-requestAnimationFrame(checkClipboardWrapper);
+};

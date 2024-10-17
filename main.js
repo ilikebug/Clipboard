@@ -120,7 +120,8 @@ function showSection(sectionId) {
   }
 }
 
-function updateHistory(history = window.preload.getClipboardHistory()) {
+function updateHistory() {
+  const history = window.preload.getClipboardHistory();
   const historyElement = document.getElementById('history');
   
   if (history === null || history.length === 0) {
@@ -128,73 +129,22 @@ function updateHistory(history = window.preload.getClipboardHistory()) {
     return;
   }
 
-  // 使用DocumentFragment来减少DOM操作
-  const fragment = document.createDocumentFragment();
-  
-  history.forEach((item, index) => {
-    const div = document.createElement('div');
-    div.className = `history-item ${index === currentSelectedIndex ? 'selected' : ''}`;
-    div.setAttribute('data-index', index);
-    div.innerHTML = `
-      <div class="content" title="${escapeHtml(item.content)}">
-        ${renderContent(item)}
-      </div>
-      <div class="actions">
-        <button class="copy-btn" data-index="${index}">复制</button>
-        <button class="remove-btn" data-index="${index}">删除</button>
-        <button class="export-btn" data-index="${index}">导出</button>
-        <button class="favorite-btn" data-index="${index}">收藏</button>
-        <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
-      </div>
-    `;
-    
-    // 添加事件监听器
-    div.addEventListener('click', (e) => {
-      if (!e.target.closest('button')) {
-        e.preventDefault();
-        e.stopPropagation();
-        copyItem(index);
-      }
-    });
-    
-    div.querySelector('.copy-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      copyItem(index);
-    });
-    
-    div.querySelector('.remove-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeItem(index);
-    });
-    
-    div.querySelector('.export-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      exportSingleItem(index);
-      showToast('导出成功');
-    });
-    
-    div.querySelector('.favorite-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      addToFavorites(history[index]);
-      updateFavorites();
-      showToast('收藏成功');
-    });
-    
-    fragment.appendChild(div);
-  });
-
-  historyElement.innerHTML = '';
-  historyElement.appendChild(fragment);
-
-  // 在历史列表后,如果当前显示的是历史页面,则滚动到顶部
-  if (document.getElementById('history').classList.contains('active')) {
-    document.getElementById('history').scrollTop = 0;
+  // 只更新第一个元素,如果它不存在或者内容不同
+  const firstItem = historyElement.querySelector('.history-item');
+  if (!firstItem || firstItem.getAttribute('data-content') !== history[0].content) {
+    const newItem = createHistoryItem(history[0], 0);
+    if (firstItem) {
+      historyElement.insertBefore(newItem, firstItem);
+    } else {
+      historyElement.appendChild(newItem);
+    }
   }
 
-  // 在历史列表更新后,重置当前选中索引
-  currentSelectedIndex = -1;
-  updateSelectedItem();
-  scrollToSelectedItem();
+  // 确保列表中的项目数量不超过设置的最大记录数
+  const maxRecords = window.preload.getSettings().maxRecords;
+  while (historyElement.children.length > maxRecords) {
+    historyElement.removeChild(historyElement.lastChild);
+  }
 }
 
 function renderContent(item) {
@@ -405,12 +355,12 @@ function initializeApp() {
 
   // 可以在这里执行一些清理操作
   utools.onPluginOut(() => {
-    // 可以��这里执行一些清理��作
+    // 可以这里执行一些清理作
   });
 
   // 修改定时检查剪贴板的逻辑
   setInterval(() => {
-    if (window.preload.checkClipboard()) {
+    if (window.preload.checkClipboard() && window.preload.shouldUpdateHistory()) {
       updateHistory();
     }
   }, 100);
@@ -566,7 +516,7 @@ document.head.appendChild(style);
 
 // 添加重置设置的函数
 function resetSettings() {
-  const defaultSettings = { maxRecords: 1000, pasteAfterCopy: false };
+  const defaultSettings = { maxRecords: 100, pasteAfterCopy: false };
   setSettings(defaultSettings);
   loadSettingsUI();
   alert('设置已重置为默认值');
@@ -668,3 +618,57 @@ toastStyle.textContent = `
   }
 `;
 document.head.appendChild(toastStyle);
+
+// 添加新的 createHistoryItem 函数
+function createHistoryItem(item, index) {
+  const div = document.createElement('div');
+  div.className = `history-item ${index === currentSelectedIndex ? 'selected' : ''}`;
+  div.setAttribute('data-index', index);
+  div.setAttribute('data-content', item.content);
+  div.innerHTML = `
+    <div class="content" title="${escapeHtml(item.content)}">
+      ${renderContent(item)}
+    </div>
+    <div class="actions">
+      <button class="copy-btn" data-index="${index}">复制</button>
+      <button class="remove-btn" data-index="${index}">删除</button>
+      <button class="export-btn" data-index="${index}">导出</button>
+      <button class="favorite-btn" data-index="${index}">收藏</button>
+      <span class="timestamp">${new Date(item.timestamp).toLocaleString()}</span>
+    </div>
+  `;
+  
+  // 添加事件监听器
+  div.addEventListener('click', (e) => {
+    if (!e.target.closest('button')) {
+      e.preventDefault();
+      e.stopPropagation();
+      copyItem(index);
+    }
+  });
+  
+  div.querySelector('.copy-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    copyItem(index);
+  });
+  
+  div.querySelector('.remove-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    removeItem(index);
+  });
+  
+  div.querySelector('.export-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportSingleItem(index);
+    showToast('导出成功');
+  });
+  
+  div.querySelector('.favorite-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    addToFavorites(window.preload.getClipboardHistory()[index]);
+    updateFavorites();
+    showToast('收藏成功');
+  });
+
+  return div;
+}
