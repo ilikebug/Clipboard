@@ -499,3 +499,16 @@ button:hover {
 .history-item .remove-btn:hover {
   background-color: #ff6b81; /* 悬停时稍浅的红色 */
 }
+
+.link-mention {
+  color: #4a90e2;
+  text-decoration: none;
+  border-bottom: 1px dotted #4a90e2;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.link-mention:hover {
+  color: #5a9eef;
+  border-bottom: 1px solid #5a9eef;
+}

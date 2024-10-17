@@ -150,7 +150,7 @@ function updateHistory() {
 function renderContent(item) {
   switch (item.type) {
     case 'text':
-      return `<pre>${item.content}</pre>`;
+      return formatTextContent(item.content);
     case 'image':
       return `<img src="${item.content}" alt="Clipboard image" style="max-width: 100%; max-height: 200px;">`;
     case 'files':
@@ -158,6 +158,14 @@ function renderContent(item) {
     default:
       return `<p>未知类型: ${item.type}</p>`;
   }
+}
+
+// 新增函数来格式化文本内容
+function formatTextContent(text) {
+  const urlPattern = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlPattern, (url) => {
+    return `<a href="${url}" class="link-mention" target="_blank">${url}</a>`;
+  });
 }
 
 // 添加这个新函数来获取正确的快捷键组合
@@ -274,7 +282,7 @@ function saveSettings() {
   window.preload.setSettings(newSettings);
   window.preload.setPasteAfterCopySetting(pasteAfterCopy);
   updateHistoryWithNewMaxRecords(maxRecords);
-  alert('设置已保存');
+  showToast('设置已保存');
 }
 
 function updateHistoryWithNewMaxRecords(newMaxRecords) {
@@ -573,7 +581,7 @@ function resetSettings() {
   const defaultSettings = { maxRecords: 100, pasteAfterCopy: true };
   setSettings(defaultSettings);
   loadSettingsUI();
-  alert('设置已重置为默认值');
+  showToast('设置已重置为默认值');
 }
 
 // 在文件中添加这个新函数
