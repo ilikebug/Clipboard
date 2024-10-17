@@ -191,12 +191,11 @@ function copyItem(index) {
   if (index >= 0 && index < history.length) {
     window.preload.copyToClipboard(history[index]);
     const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
-    if (pasteAfterCopy) {
-      utools.hideMainWindow();
+    utools.hideMainWindow();
+    if (pasteAfterCopy) { 
       pasteContent();
-    } else {
-      exitPlugin();
     }
+    exitPlugin();
   } else {
     console.error('无效的史记录索引');
   }
@@ -208,12 +207,11 @@ function copyFavoriteItem(index) {
   if (index >= 0 && index < favorites.length) {
     window.preload.copyToClipboard(favorites[index]);
     const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
+    utools.hideMainWindow();
     if (pasteAfterCopy) {
-      utools.hideMainWindow();
       pasteContent();
-    } else {
-      exitPlugin();
     }
+    exitPlugin();
   } else {
     console.error('无效的收藏记录索引');
   }
@@ -223,7 +221,6 @@ function copyFavoriteItem(index) {
 function pasteContent() {
   const [modifier, key] = getShortcutKey('v');
   utools.simulateKeyboardTap(key, modifier);
-  exitPlugin();
 }
 
 // 修改 exitPlugin 函数
@@ -632,12 +629,11 @@ function copyFavoriteItem(index) {
   if (index >= 0 && index < favorites.length) {
     window.preload.copyToClipboard(favorites[index]);
     const pasteAfterCopy = window.preload.getPasteAfterCopySetting();
+    utools.hideMainWindow();
     if (pasteAfterCopy) {
-      utools.hideMainWindow();
       pasteContent();
-    } else {
-      exitPlugin();
     }
+    exitPlugin();
   } else {
     console.error('无效的收藏记录索引');
   }
