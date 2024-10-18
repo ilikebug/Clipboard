@@ -279,15 +279,26 @@ function clearAllHistory() {
 function saveSettings() {
   const maxRecords = parseInt(document.getElementById('maxRecords').value, 10);
   const pasteAfterCopy = document.getElementById('pasteAfterCopy').checked;
-  console.log('Saving settings:', { maxRecords, pasteAfterCopy });
+  const showMemoryUsage = document.getElementById('showMemoryUsage').checked;
+  console.log('Saving settings:', { maxRecords, pasteAfterCopy, showMemoryUsage });
   const newSettings = {
     maxRecords: maxRecords,
-    pasteAfterCopy: pasteAfterCopy
+    pasteAfterCopy: pasteAfterCopy,
+    showMemoryUsage: showMemoryUsage
   };
   window.preload.setSettings(newSettings);
   window.preload.setPasteAfterCopySetting(pasteAfterCopy);
   updateHistoryWithNewMaxRecords(maxRecords);
   showToast('设置已保存');
+
+  // 更新内存使用情况的显示状态
+  const memoryUsageElement = document.getElementById('memory-usage');
+  if (showMemoryUsage) {
+    memoryUsageElement.style.display = 'block';
+    updateMemoryUsage(); // 立即更新内存信息
+  } else {
+    memoryUsageElement.style.display = 'none';
+  }
 }
 
 function updateHistoryWithNewMaxRecords(newMaxRecords) {
@@ -412,12 +423,17 @@ function initializeApp() {
     performSearch(currentSearchKeyword, activeSection);
   });
 
-  // 添加搜索提示
-  searchInput.setAttribute('placeholder', '搜索...（在收藏中使用 #标签 搜索标签）');
-
   document.getElementById('clearHistory').addEventListener('click', clearAllHistory);
   document.getElementById('saveSettings').addEventListener('click', saveSettings);
   document.getElementById('resetSettings').addEventListener('click', resetSettings);
+
+  const memoryUsageElement = document.getElementById('memory-usage');
+  if (window.preload.getSettings().showMemoryUsage) {
+    memoryUsageElement.style.display = 'block';
+    setInterval(updateMemoryUsage, 1000); // 定时更新内存信息
+  } else {
+    memoryUsageElement.style.display = 'none';
+  }
 
   // 添加插件进入和退出的事件监听器
   utools.onPluginEnter(() => {
@@ -614,7 +630,7 @@ document.head.appendChild(style);
 
 // 添加重置设置的函数
 function resetSettings() {
-  const defaultSettings = { maxRecords: 100, pasteAfterCopy: true };
+  const defaultSettings = { maxRecords: 100, pasteAfterCopy: true, showMemoryUsage: false };
   setSettings(defaultSettings);
   loadSettingsUI();
   showToast('设置已重置为默认值');
@@ -799,4 +815,14 @@ function openLink(url) {
   } catch (e) {
     showToast('无效的URL');
   }
+}
+
+function updateMemoryUsage() {
+  const memoryInfo = window.preload.getMemoryUsage();
+  const memoryInfoElement = document.getElementById('memory-info');
+  memoryInfoElement.innerHTML = `
+    <div class="memory-info-line">RSS: ${memoryInfo.rss}</div>
+    <div class="memory-info-line">Heap Total: ${memoryInfo.heapTotal}</div>
+    <div class="memory-info-line">Heap Used: ${memoryInfo.heapUsed}</div>
+  `;
 }

@@ -29,6 +29,10 @@
         <i class="fas fa-cog"></i>
         <span>设置</span>
       </button>
+      <div id="memory-usage" class="memory-usage">
+        <i class="fas fa-memory"></i>
+        <span id="memory-info">内存使用情况: 加载中...</span>
+      </div>
     </aside>
     <div id="main-content">
       <header>
@@ -50,6 +54,10 @@
             <div class="setting-item">
               <label for="pasteAfterCopy">复制后立即粘贴：</label>
               <input type="checkbox" id="pasteAfterCopy">
+            </div>
+            <div class="setting-item">
+              <label for="showMemoryUsage">显示内存使用情况：</label>
+              <input type="checkbox" id="showMemoryUsage">
             </div>
           </div>
           <div class="settings-actions">

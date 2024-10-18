@@ -3,7 +3,7 @@ const path = require('path');
 const { clipboard, nativeImage, dialog } = require('electron');
 
 let clipboardHistory = [];
-let settings = { maxRecords: 1000, pasteAfterCopy: false };
+let settings = { maxRecords: 1000, pasteAfterCopy: false, showMemoryUsage: false };
 let isSearching = false;
 let favorites = [];
 
@@ -308,6 +308,17 @@ function exportFavorites(filePath) {
   }
 }
 
+// 获取内存信息
+function getMemoryUsage() {
+  const memoryUsage = process.memoryUsage();
+  return {
+    rss: (memoryUsage.rss / 1024 / 1024).toFixed(2) + ' MB',
+    heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2) + ' MB',
+    heapUsed: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2) + ' MB',
+    external: (memoryUsage.external / 1024 / 1024).toFixed(2) + ' MB'
+  };
+}
+
 // 修改 window.preload 对象
 window.preload = {
   loadSettings,
@@ -356,5 +367,6 @@ window.preload = {
     return false;
   },
   importFavorites,
-  exportFavorites
+  exportFavorites,
+  getMemoryUsage
 };
