@@ -3,7 +3,7 @@ const path = require('path');
 const { clipboard, nativeImage, dialog } = require('electron');
 
 let clipboardHistory = [];
-let settings = { maxRecords: 1000, pasteAfterCopy: false, showMemoryUsage: false };
+let settings = { maxRecords: 100, pasteAfterCopy: false, showMemoryUsage: false };
 let isSearching = false;
 let favorites = [];
 
