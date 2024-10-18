@@ -161,7 +161,8 @@ function renderContent(item) {
     case 'text':
       return formatTextContent(item.content);
     case 'image':
-      return `<img src="${item.content}" alt="Clipboard image" style="max-width: 100%; max-height: 200px;">`;
+      // 使用缩略图或懒加载技术
+      return `<img src="${item.content}" alt="Clipboard image" style="max-width: 10%; max-height: 50px;" loading="lazy">`;
     case 'files':
       return `<p>文件: ${item.content}</p>`;
     default:
