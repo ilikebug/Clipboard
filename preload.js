@@ -1,6 +1,7 @@
 const { clipboard, nativeImage } = require("electron");
 const crypto = require("crypto");
 const fs = require("fs");
+const { size } = require("lodash");
 
 function GenerateMD5Hash(data) {
   return crypto.createHash("md5").update(data).digest("hex");
@@ -128,6 +129,10 @@ function ExportFile(filePath, data) {
   }
 }
 
+function Size(data) {
+  return size(data).toFixed(2);
+}
+
 // 修改 window.preload 对象
 window.preload = {
   dbStorage: new DBStorage(),
@@ -143,4 +148,6 @@ window.preload = {
 
   ReadFile,
   ExportFile,
+
+  Size,
 };

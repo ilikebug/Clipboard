@@ -12,6 +12,8 @@ const {
 
   ReadFile,
   ExportFile,
+
+  Size,
 } = window.preload;
 
 const CHECK_CLIPBOARD_INTERVAL = 200;
@@ -414,6 +416,7 @@ class HistoryList {
           <button class="export-btn" history-id="${historyID}">导出</button>
           <button class="favorite-btn" history-id="${historyID}">收藏</button>
           <span class="timestamp">${new Date(historyItem.timestamp).toLocaleString()}</span>
+          <span class="timestamp">${formatSize(Size(historyItem.content))}</span>
         </div>
       </div>
     `);
@@ -491,6 +494,7 @@ class FavoritesList {
           <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
           <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
           <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
+          <span class="timestamp">${formatSize(Size(favoritesItem.content))}</span>
         </div>
       </div>
       `);
@@ -721,6 +725,16 @@ function exitAPP() {
   document.getElementById("search").value = "";
   utools.hideMainWindow();
   utools.outPlugin();
+}
+
+function formatSize(size) {
+  if (size > 1024) {
+    if (size > 1024 * 1024) {
+      return `${(size / 1024 / 1024).toFixed(2)} MB`;
+    }
+    return `${(size / 1024).toFixed(2)} KB`;
+  }
+  return `${size} B`;
 }
 
 utools.onPluginEnter(() => {
