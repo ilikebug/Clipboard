@@ -1,6 +1,7 @@
 const { clipboard, nativeImage } = require("electron");
 const crypto = require("crypto");
 const fs = require("fs");
+const path = require("path");
 const { size } = require("lodash");
 const clipboardWatcher = require("electron-clipboard-watcher");
 
@@ -99,7 +100,7 @@ function ExportSingleHistoryItem(item) {
   }
 }
 
-function ReadFile(filePath) {
+function ReadFavoritesFile(filePath) {
   try {
     const data = fs.readFileSync(filePath, "utf-8");
     const importedFavorites = JSON.parse(data);
@@ -110,7 +111,7 @@ function ReadFile(filePath) {
   }
 }
 
-function ExportFile(filePath, data) {
+function ExportFavoritesFile(filePath, data) {
   try {
     fs.writeFileSync(filePath, data);
   } catch (error) {
@@ -120,6 +121,43 @@ function ExportFile(filePath, data) {
 
 function Size(data) {
   return size(data).toFixed(2);
+}
+
+function ReadFile(filePath) {
+  try {
+    return fs.readFileSync(filePath);
+  } catch (error) {
+    console.error("读取本地文件失败:", error);
+    return null;
+  }
+}
+
+function DeleteFile(filePath) {
+  try {
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (error) {
+    console.error("删除文件失败:", error);
+    return false;
+  }
+}
+
+function SaveFile(content, fileName) {
+  try {
+    const appDataPath = utools.getPath("userData");
+    const storageDir = path.join(appDataPath, "clipboard_storage");
+
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+    }
+
+    const filePath = path.join(storageDir, fileName);
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  } catch (error) {
+    console.error("存储文件失败:", error);
+    return null;
+  }
 }
 
 // 修改 window.preload 对象
@@ -133,8 +171,12 @@ window.preload = {
 
   ExportSingleHistoryItem,
 
-  ReadFile,
-  ExportFile,
+  ReadFavoritesFile,
+  ExportFavoritesFile,
 
   Size,
+
+  ReadFile,
+  SaveFile,
+  DeleteFile,
 };

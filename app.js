@@ -10,10 +10,14 @@ const {
 
   GetMemoryUsage,
 
-  ReadFile,
-  ExportFile,
+  ReadFavoritesFile,
+  ExportFavoritesFile,
 
   Size,
+
+  ReadFile,
+  SaveFile,
+  DeleteFile,
 } = window.preload;
 
 const CHECK_CLIPBOARD_INTERVAL = 200;
@@ -524,11 +528,11 @@ class FavoritesList {
     for (const [k, v] of Object.entries(data)) {
       if (v == null) delete data[k];
     }
-    ExportFile(filePath, JSON.stringify(data));
+    ExportFavoritesFile(filePath, JSON.stringify(data));
   }
 
   importFavoritesList(filePath) {
-    const data = ReadFile(filePath);
+    const data = ReadFavoritesFile(filePath);
     if (data == null) return;
     for (const [_, v] of Object.entries(data)) {
       if (v == null) continue;
