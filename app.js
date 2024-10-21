@@ -14,14 +14,6 @@ const {
   ExportFile,
 
   Size,
-
-  getAppDataPath,
-  ensureAppDataDir,
-  saveFileToAppData,
-  readFileFromAppData,
-  deleteFileFromAppData,
-
-  base64ToArrayBuffer,
 } = window.preload;
 
 const CHECK_CLIPBOARD_INTERVAL = 200;
@@ -92,9 +84,6 @@ class ContentTools {
   }
 
   escapeHtml(unsafe) {
-    if (typeof unsafe !== "string") {
-      return "";
-    }
     return unsafe
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -164,9 +153,7 @@ class RegisterEvent {
         e.stopPropagation();
         const historyID = e.target.getAttribute("history-id");
         favoritesList.addContentToFavoritesList(historyListDataMap[historyID]);
-        setTimeout(() => {
-          favoritesList.renderFavoritesList();
-        }, 300);
+        favoritesList.renderFavoritesList();
         showToast("收藏成功");
       });
     });
@@ -368,15 +355,15 @@ class HistoryList {
       if (historySortIDList.length >= maxHistoryCount) {
         const deleteID = historySortIDList.pop();
         dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
-        this.removeHistoryItem(deleteID);
+        delete historyListDataMap[deleteID];
+        dbStorage.removeData(deleteID);
       }
       historySortIDList.unshift(historyID);
       dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
-
-      const storedData = this.storeContent(clipboardData);
       historyListDataMap[historyID] = {
         id: historyID,
-        ...storedData,
+        content: clipboardData.content,
+        type: clipboardData.type,
         timestamp: Date.now(),
       };
       dbStorage.setData(historyID, historyListDataMap[historyID]);
@@ -390,26 +377,6 @@ class HistoryList {
       dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
     }
     return true;
-  }
-
-  storeContent(clipboardData) {
-    if (
-      clipboardData.type === "image" &&
-      clipboardData.content.length > 1024 * 1024
-    ) {
-      const filePath = saveFileToAppData(clipboardData.content, "png");
-      return { type: "image", content: filePath, isFile: true };
-    }
-    return clipboardData;
-  }
-
-  removeHistoryItem(historyID) {
-    const item = historyListDataMap[historyID];
-    if (item && item.isFile) {
-      deleteFileFromAppData(item.content);
-    }
-    delete historyListDataMap[historyID];
-    dbStorage.removeData(historyID);
   }
 
   initHistoryList() {
@@ -439,12 +406,9 @@ class HistoryList {
     for (const historyID of ids) {
       const historyItem = historyListDataMap[historyID];
       if (historyItem == null) continue;
-      const content = this.getContent(historyItem);
-      const safeContent =
-        typeof content === "string" ? content : JSON.stringify(content);
       historyItemHTMLList.push(`
       <div class="history-item" history-id="${historyID}">
-        <div class="content" title="${contentTools.escapeHtml(safeContent)}">
+        <div class="content" title="${contentTools.escapeHtml(historyItem.content)}">
           ${contentTools.renderContent(historyItem)}
         </div>
         <div class="actions">
@@ -452,20 +416,13 @@ class HistoryList {
           <button class="export-btn" history-id="${historyID}">导出</button>
           <button class="favorite-btn" history-id="${historyID}">收藏</button>
           <span class="timestamp">${new Date(historyItem.timestamp).toLocaleString()}</span>
-          <span class="timestamp">${formatSize(Size(content))}</span>
+          <span class="timestamp">${formatSize(Size(historyItem.content))}</span>
         </div>
       </div>
     `);
     }
     historyElement.innerHTML = historyItemHTMLList.join("");
     registerEvent.registerHistoryItemEvent();
-  }
-
-  getContent(item) {
-    if (item.isFile) {
-      return readFileFromAppData(item.content);
-    }
-    return item.content;
   }
 
   searchHistory(keyword) {
@@ -498,36 +455,20 @@ class FavoritesList {
     if (favoritesListDataMap[favoritesID] == null) {
       favoritesSortIDList.unshift(favoritesID);
       dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
-
-      const storedData = this.storeContent(clipboardData);
       favoritesListDataMap[favoritesID] = {
         id: favoritesID,
-        ...storedData,
+        content: clipboardData.content,
+        type: clipboardData.type,
         timestamp: Date.now(),
       };
       dbStorage.setData(favoritesID, favoritesListDataMap[favoritesID]);
     }
   }
 
-  storeContent(clipboardData) {
-    if (
-      clipboardData.type === "image" &&
-      clipboardData.content.length > 1024 * 1024
-    ) {
-      const filePath = saveFileToAppData(clipboardData.content, "png");
-      return { type: "image", content: filePath, isFile: true };
-    }
-    return clipboardData;
-  }
-
   cancelFavorite(favoritesID) {
     const index = favoritesSortIDList.findIndex((id) => id == favoritesID);
     favoritesSortIDList.splice(index, 1);
     dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
-    const item = favoritesListDataMap[favoritesID];
-    if (item && item.isFile) {
-      deleteFileFromAppData(item.content);
-    }
     delete favoritesListDataMap[favoritesID];
     dbStorage.removeData(favoritesID);
     this.renderFavoritesList();
@@ -539,12 +480,9 @@ class FavoritesList {
     for (const favoritesID of ids) {
       let favoritesItem = favoritesListDataMap[favoritesID];
       if (favoritesItem == null) continue;
-      const content = this.getContent(favoritesItem);
-      const safeContent =
-        typeof content === "string" ? content : JSON.stringify(content);
       favoritesItemHTMLList.push(`
       <div class="history-item favorite-item" favorites-id="${favoritesID}">
-        <div class="content" title="${contentTools.escapeHtml(safeContent)}">
+        <div class="content" title="${contentTools.escapeHtml(favoritesItem.content)}">
           ${contentTools.renderContent(favoritesItem)}
         </div>
         <div class="tags">
@@ -556,7 +494,7 @@ class FavoritesList {
           <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
           <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
           <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
-          <span class="timestamp">${formatSize(Size(content))}</span>
+          <span class="timestamp">${formatSize(Size(favoritesItem.content))}</span>
         </div>
       </div>
       `);
@@ -617,13 +555,6 @@ class FavoritesList {
     dbStorage.removeData(FAVORITES_SORT_ID_LIST);
     this.renderFavoritesList();
   }
-
-  getContent(item) {
-    if (item.isFile) {
-      return readFileFromAppData(item.content);
-    }
-    return item.content;
-  }
 }
 
 function renderMemoryUsage() {
@@ -662,6 +593,9 @@ function showToast(message) {
 }
 
 function showSection(sectionId = HISTORY_SECTION) {
+  if (sectionId === FAVORITES_SECTION) {
+    favoritesList.renderFavoritesList();
+  }
   document.querySelectorAll(".content-section").forEach((section) => {
     section.classList.remove("active");
   });
@@ -810,6 +744,12 @@ utools.onPluginEnter(() => {
   registerEvent.registerClearHistoryEvent();
   registerEvent.registerSearchEvent();
   registerEvent.registerFavoritesEvent();
+  // need to render history list when the first enter app
+  historyList.renderHistoryList();
+  // need to render favorites list when the first enter app
+  favoritesList.renderFavoritesList();
+  // default show history section
+  showSection(HISTORY_SECTION);
 });
 
 function initAPP() {
@@ -825,15 +765,10 @@ function initAPP() {
 
   historyList = new HistoryList();
   historyList.initHistoryList();
-  historyList.renderHistoryList();
   historyList.TimedCheckClipboard(CHECK_CLIPBOARD_INTERVAL);
 
   favoritesList = new FavoritesList();
   favoritesList.initFavoritesList();
-  favoritesList.renderFavoritesList();
-
-  // default show history section
-  showSection(HISTORY_SECTION);
 }
 
 initAPP();

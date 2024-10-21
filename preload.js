@@ -2,8 +2,6 @@ const { clipboard, nativeImage } = require("electron");
 const crypto = require("crypto");
 const fs = require("fs");
 const { size } = require("lodash");
-const path = require("path");
-const os = require("os");
 
 function GenerateMD5Hash(data) {
   return crypto.createHash("md5").update(data).digest("hex");
@@ -135,54 +133,6 @@ function Size(data) {
   return size(data).toFixed(2);
 }
 
-function getAppDataPath() {
-  return path.join(os.homedir(), ".starclipboard");
-}
-
-function ensureAppDataDir() {
-  const appDataPath = getAppDataPath();
-  if (!fs.existsSync(appDataPath)) {
-    fs.mkdirSync(appDataPath, { recursive: true });
-  }
-  return appDataPath;
-}
-
-// 添加这个函数来处理 base64 字符串
-function base64ToArrayBuffer(base64) {
-  const binaryString = window.atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-function saveFileToAppData(content, fileExtension) {
-  const appDataPath = ensureAppDataDir();
-  const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExtension}`;
-  const filePath = path.join(appDataPath, fileName);
-
-  // 如果 content 是 base64 字符串，先转换为 ArrayBuffer
-  if (typeof content === "string" && content.startsWith("data:")) {
-    const base64Data = content.split(",")[1];
-    const arrayBuffer = base64ToArrayBuffer(base64Data);
-    fs.writeFileSync(filePath, new Uint8Array(arrayBuffer));
-  } else {
-    fs.writeFileSync(filePath, content);
-  }
-
-  return filePath;
-}
-
-function readFileFromAppData(filePath) {
-  return fs.readFileSync(filePath);
-}
-
-function deleteFileFromAppData(filePath) {
-  fs.unlinkSync(filePath);
-}
-
 // 修改 window.preload 对象
 window.preload = {
   dbStorage: new DBStorage(),
@@ -200,11 +150,4 @@ window.preload = {
   ExportFile,
 
   Size,
-
-  getAppDataPath,
-  ensureAppDataDir,
-  saveFileToAppData,
-  readFileFromAppData,
-  deleteFileFromAppData,
-  base64ToArrayBuffer,
 };
