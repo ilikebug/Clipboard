@@ -2,6 +2,7 @@ const { clipboard, nativeImage } = require("electron");
 const crypto = require("crypto");
 const fs = require("fs");
 const { size } = require("lodash");
+const clipboardWatcher = require("electron-clipboard-watcher");
 
 function GenerateMD5Hash(data) {
   return crypto.createHash("md5").update(data).digest("hex");
@@ -25,28 +26,23 @@ class DBStorage {
 }
 
 // 检查系统剪贴板
-function CheckSystemClipboard() {
-  const text = clipboard.readText();
-  const image = clipboard.readImage();
-  const files = clipboard
-    .readBuffer("FileNameW")
-    .toString("ucs2")
-    .replace(/\0/g, "")
-    .split("\r\n")
-    .filter(Boolean);
-
-  switch (true) {
-    case text != "":
-      return { type: "text", content: text };
-    case !image.isEmpty():
+function CheckSystemClipboard(callback) {
+  clipboardWatcher({
+    watchDelay: 1000,
+    onTextChange: (text) => {
+      console.log("文本变化", text);
+      callback({ type: "text", content: text });
+    },
+    onImageChange: (image) => {
+      console.log("图片变化", image);
       const imageDataUrl = image.toDataURL();
-      return { type: "image", content: imageDataUrl };
-    case files.length > 0:
-      const filesContent = files.join(", ");
-      return { type: "files", content: filesContent };
-    default:
-      return null;
-  }
+      callback({ type: "image", content: imageDataUrl });
+    },
+    onFilesChange: (files) => {
+      console.log("文件变化", files);
+      callback({ type: "files", content: files });
+    },
+  });
 }
 
 // 设置数据到系统剪贴板
@@ -103,13 +99,6 @@ function ExportSingleHistoryItem(item) {
   }
 }
 
-function GetMemoryUsage() {
-  const memoryUsage = process.memoryUsage();
-  return {
-    usage: (memoryUsage.rss / 1024 / 1024).toFixed(2) + " MB",
-  };
-}
-
 function ReadFile(filePath) {
   try {
     const data = fs.readFileSync(filePath, "utf-8");
@@ -143,8 +132,6 @@ window.preload = {
   GenerateMD5Hash,
 
   ExportSingleHistoryItem,
-
-  GetMemoryUsage,
 
   ReadFile,
   ExportFile,

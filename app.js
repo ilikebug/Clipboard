@@ -29,7 +29,6 @@ const SETTINGS_SECTION = "settings";
 const defaultSettingsConfig = {
   maxHistoryCount: 100,
   pasteToSystem: true,
-  showMemoryUsage: false,
 };
 
 let historySortIDList = [];
@@ -177,13 +176,6 @@ class RegisterEvent {
     document.getElementById("saveSettings").addEventListener("click", () => {
       const maxHistoryCount = document.getElementById("maxHistoryCount").value;
       const pasteToSystem = document.getElementById("pasteToSystem").checked;
-      const showMemoryUsage =
-        document.getElementById("showMemoryUsage").checked;
-      settings.set({
-        maxHistoryCount,
-        pasteToSystem,
-        showMemoryUsage,
-      });
       showToast("设置保存成功");
     });
 
@@ -337,17 +329,6 @@ class RegisterEvent {
 //----------------------------------//
 let historyList = null;
 class HistoryList {
-  TimedCheckClipboard(t) {
-    setInterval(() => {
-      const clipboardData = CheckSystemClipboard();
-      if (clipboardData == null) return;
-      const success = this.addContentToHistoryList(clipboardData);
-      if (success) {
-        this.renderHistoryList();
-      }
-    }, t);
-  }
-
   addContentToHistoryList(clipboardData) {
     const historyID = GenerateMD5Hash(clipboardData.content);
     const maxHistoryCount = settings.get().maxHistoryCount;
@@ -557,23 +538,6 @@ class FavoritesList {
   }
 }
 
-function renderMemoryUsage() {
-  setInterval(() => {
-    const memoryUsageElement = document.getElementById("memory-usage");
-    if (settings.get().showMemoryUsage) {
-      memoryUsageElement.style.display = "block";
-      const memoryInfo = GetMemoryUsage();
-      const memoryInfoElement = document.getElementById("memory-info");
-      memoryInfoElement.innerHTML = `
-      <div class="memory-info-line">内存使用情况:</div>
-      <div class="memory-info-line">Usage: ${memoryInfo.usage}</div>
-      `;
-    } else {
-      memoryUsageElement.style.display = "none";
-    }
-  }, SHOW_MEMORY_USAGE_INTERVAL);
-}
-
 function showToast(message) {
   const toast = document.createElement("div");
   toast.className = "toast";
@@ -756,16 +720,18 @@ function initAPP() {
   settings = new Settings();
   settings.init();
 
+  adjustSidebarWidth();
+
   contentTools = new ContentTools();
   registerEvent = new RegisterEvent();
 
-  // show memory usage
-  renderMemoryUsage();
-  adjustSidebarWidth();
+  CheckSystemClipboard((clipboardData) => {
+    historyList.addContentToHistoryList(clipboardData);
+    historyList.renderHistoryList();
+  });
 
   historyList = new HistoryList();
   historyList.initHistoryList();
-  historyList.TimedCheckClipboard(CHECK_CLIPBOARD_INTERVAL);
 
   favoritesList = new FavoritesList();
   favoritesList.initFavoritesList();
