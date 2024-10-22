@@ -39,6 +39,8 @@ let favoritesListDataMap = {};
 
 let searchKeyword = "";
 
+let currentSelectedTab = "history";
+
 let settings = null;
 class Settings {
   init() {
@@ -169,6 +171,9 @@ class RegisterEvent {
     document
       .getElementById("showSettings")
       .addEventListener("click", () => showSection(SETTINGS_SECTION));
+
+    // 添加键盘事件监听
+    document.addEventListener("keydown", this.handleKeyDown.bind(this));
   }
 
   registerSettingsEvent() {
@@ -310,6 +315,105 @@ class RegisterEvent {
         performSearch();
       },
       500
+    );
+  }
+
+  // 添加处理键盘事件的新方法
+  handleKeyDown(event) {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      this.switchFocusedButton();
+    } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      this.navigateList(event.key === "ArrowUp" ? -1 : 1);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      this.activateCurrentItem();
+    }
+  }
+
+  switchFocusedButton() {
+    const buttons = ["history", "favorites", "settings"];
+    const currentIndex = buttons.indexOf(currentFocusedButton);
+    const nextIndex = (currentIndex + 1) % buttons.length;
+    currentFocusedButton = buttons[nextIndex];
+    this.updateButtonFocus();
+    showSection(
+      currentFocusedButton === "settings"
+        ? SETTINGS_SECTION
+        : currentFocusedButton === "favorites"
+          ? FAVORITES_SECTION
+          : HISTORY_SECTION
+    );
+  }
+
+  updateButtonFocus() {
+    document.querySelectorAll(".sidebar-btn").forEach((btn) => {
+      btn.classList.remove("focused");
+    });
+    document
+      .getElementById(
+        `show${currentFocusedButton.charAt(0).toUpperCase() + currentFocusedButton.slice(1)}`
+      )
+      .classList.add("focused");
+  }
+
+  navigateList(direction) {
+    const items = document.querySelectorAll(
+      `#${currentFocusedButton} .${currentFocusedButton}-item`
+    );
+    if (items.length === 0) return;
+
+    currentSelectedItem += direction;
+    if (currentSelectedItem < 0) currentSelectedItem = items.length - 1;
+    if (currentSelectedItem >= items.length) currentSelectedItem = 0;
+
+    items.forEach((item, index) => {
+      item.classList.toggle("selected", index === currentSelectedItem);
+    });
+
+    // 确保选中的项目可见
+    items[currentSelectedItem].scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }
+
+  activateCurrentItem() {
+    const selectedItem = document.querySelector(
+      `#${currentFocusedButton} .${currentFocusedButton}-item.selected`
+    );
+    if (selectedItem) {
+      const copyBtn = selectedItem.querySelector(".copy-btn");
+      if (copyBtn) {
+        // copyBtn.click(); // 触发复制操作
+
+        // 添加视觉反馈
+        selectedItem.style.animation = "flash 0.3s";
+        setTimeout(() => {
+          selectedItem.style.animation = "";
+        }, 300);
+
+        // 执行粘贴操作
+        if (settings.get().pasteToSystem) {
+          contentTools.pasteContentToSystem();
+        }
+
+        // 退出应用
+        exitAPP();
+      }
+    }
+  }
+
+  // 添加更新标签选中状态的方法
+  updateTabSelection() {
+    const historyButton = document.getElementById("showHistory");
+    const favoritesButton = document.getElementById("showFavorites");
+
+    historyButton.classList.toggle("active", currentSelectedTab === "history");
+    favoritesButton.classList.toggle(
+      "active",
+      currentSelectedTab === "favorites"
     );
   }
 }
@@ -532,7 +636,7 @@ class FavoritesList {
         // 如果还有更多项目要渲染，安排下一批
         requestAnimationFrame(renderBatch);
       } else {
-        // 所有项目都已渲染完毕，注册事件
+        // 所项目都已渲染完毕，注册事件
         registerEvent.registerFavoritesItemEvent();
       }
     };
@@ -637,6 +741,9 @@ function showToast(message) {
 function showSection(sectionId = HISTORY_SECTION) {
   if (sectionId === FAVORITES_SECTION) {
     favoritesList.renderFavoritesList();
+    currentSelectedTab = "favorites";
+  } else if (sectionId === HISTORY_SECTION) {
+    currentSelectedTab = "history";
   }
   document.querySelectorAll(".content-section").forEach((section) => {
     section.classList.remove("active");
@@ -683,6 +790,21 @@ function showSection(sectionId = HISTORY_SECTION) {
     document.getElementById("pasteToSystem").checked =
       settings.get().pasteToSystem;
   }
+
+  // 重置当前选中的项目
+  currentSelectedItem = -1;
+
+  // 更新当前焦点按钮
+  currentFocusedButton =
+    sectionId === SETTINGS_SECTION
+      ? "settings"
+      : sectionId === FAVORITES_SECTION
+        ? "favorites"
+        : "history";
+  registerEvent.updateButtonFocus();
+
+  // 在函数末尾添加:
+  registerEvent.updateTabSelection();
 }
 
 function openLink(url) {
@@ -794,24 +916,26 @@ function initAPP() {
 
   // 检查必要的 preload 函数是否都已正确加载
   const requiredPreloadFunctions = [
-    'dbStorage',
-    'CheckSystemClipboard',
-    'CopyToSystemClipboard',
-    'GenerateMD5Hash',
-    'ExportSingleHistoryItem',
-    'ReadFavoritesFile',
-    'ExportFavoritesFile',
-    'SaveFile',
-    'DeleteFile',
-    'ReadImageFile',
-    'Buffer'
+    "dbStorage",
+    "CheckSystemClipboard",
+    "CopyToSystemClipboard",
+    "GenerateMD5Hash",
+    "ExportSingleHistoryItem",
+    "ReadFavoritesFile",
+    "ExportFavoritesFile",
+    "SaveFile",
+    "DeleteFile",
+    "ReadImageFile",
+    "Buffer",
   ];
 
   for (const func of requiredPreloadFunctions) {
-    if (typeof window.preload[func] === 'undefined') {
+    if (typeof window.preload[func] === "undefined") {
       console.error(`预加载函数 ${func} 未定义。请检查 preload.js 文件。`);
     }
   }
+
+  registerEvent.updateButtonFocus(); // 初始化按钮焦点
 }
 
 initAPP();

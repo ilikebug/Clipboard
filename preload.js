@@ -2,7 +2,7 @@ const { clipboard, nativeImage } = require("electron");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { Buffer } = require('buffer');
+const { Buffer } = require("buffer");
 
 function GenerateMD5Hash(data, type) {
   if (type === "image") {
@@ -65,13 +65,8 @@ function CopyToSystemClipboard(item) {
       clipboard.writeText(item.content);
     } else if (item.type === "image") {
       const data = fs.readFileSync(item.content);
-      const image = nativeImage.createFromDataURL(data);
+      const image = nativeImage.createFromBuffer(data);
       clipboard.writeImage(image);
-    } else if (item.type === "files") {
-      clipboard.writeBuffer(
-        "FileNameW",
-        Buffer.from(item.content.split(", ").join("\0") + "\0", "ucs2")
-      );
     }
   } catch (error) {
     console.error("复制到剪贴板失败:", error);
@@ -172,9 +167,6 @@ window.preload = {
   SaveFile,
   DeleteFile,
   ReadImageFile,
-};
 
-contextBridge.exposeInMainWorld('preload', {
-  // ... 其他暴露的函数和对象 ...
-  Buffer: Buffer,
-});
+  Buffer,
+};
