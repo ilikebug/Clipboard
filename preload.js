@@ -2,7 +2,7 @@ const { clipboard, nativeImage } = require("electron");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { size } = require("lodash");
+const { Buffer } = require('buffer');
 
 function GenerateMD5Hash(data, type) {
   if (type === "image") {
@@ -64,7 +64,7 @@ function CopyToSystemClipboard(item) {
     if (item.type === "text") {
       clipboard.writeText(item.content);
     } else if (item.type === "image") {
-      const data = ReadImageFile(item.content);
+      const data = fs.readFileSync(item.content);
       const image = nativeImage.createFromDataURL(data);
       clipboard.writeImage(image);
     } else if (item.type === "files") {
@@ -82,19 +82,11 @@ function ExportSingleHistoryItem(item) {
   let content = "";
   let filePath = "";
   if (item.type === "image") {
-    const imageData = item.content.replace(/^data:image\/\w+;base64,/, "");
-    content = Buffer.from(imageData, "base64");
+    content = fs.readFileSync(item.content);
     filePath = utools.showSaveDialog({
       title: "导出图片",
       defaultPath: `clipboard_image_${Date.now()}.png`,
       filters: [{ name: "Images", extensions: ["png"] }],
-    });
-  } else if (item.type === "files") {
-    content = item.content;
-    filePath = utools.showSaveDialog({
-      title: "导出文件列表",
-      defaultPath: `clipboard_files_${Date.now()}.txt`,
-      filters: [{ name: "Text", extensions: ["txt"] }],
     });
   } else {
     content = item.content;
@@ -132,25 +124,11 @@ function ExportFavoritesFile(filePath, data) {
   }
 }
 
-function Size(data) {
-  return size(data).toFixed(2);
-}
-
-function ReadFile(filePath) {
-  try {
-    return fs.readFileSync(filePath);
-  } catch (error) {
-    console.error("读取本地文件失败:", error);
-    return null;
-  }
-}
-
 function DeleteFile(filePath) {
   try {
     fs.unlinkSync(filePath);
     return true;
   } catch (error) {
-    console.error("删除文件失败:", error);
     return false;
   }
 }
@@ -174,13 +152,7 @@ function SaveFile(content, fileName) {
 }
 
 function ReadImageFile(filePath) {
-  try {
-    const imageBuffer = fs.readFileSync(filePath);
-    return nativeImage.createFromBuffer(imageBuffer);
-  } catch (error) {
-    console.error("读取图片文件失败:", error);
-    return null;
-  }
+  return fs.readFileSync(filePath);
 }
 
 // 修改 window.preload 对象
@@ -197,10 +169,12 @@ window.preload = {
   ReadFavoritesFile,
   ExportFavoritesFile,
 
-  Size,
-
-  ReadFile,
   SaveFile,
   DeleteFile,
   ReadImageFile,
 };
+
+contextBridge.exposeInMainWorld('preload', {
+  // ... 其他暴露的函数和对象 ...
+  Buffer: Buffer,
+});

@@ -8,14 +8,9 @@ const {
 
   ExportSingleHistoryItem,
 
-  GetMemoryUsage,
-
   ReadFavoritesFile,
   ExportFavoritesFile,
 
-  Size,
-
-  ReadFile,
   SaveFile,
   DeleteFile,
   ReadImageFile,
@@ -101,16 +96,6 @@ class ContentTools {
     } else {
       utools.simulateKeyboardTap("v", "ctrl");
     }
-  }
-
-  formatSize(size) {
-    if (size > 1024) {
-      if (size > 1024 * 1024) {
-        return `${(size / 1024 / 1024).toFixed(2)} MB`;
-      }
-      return `${(size / 1024).toFixed(2)} KB`;
-    }
-    return `${size} B`;
   }
 }
 
@@ -316,15 +301,6 @@ class RegisterEvent {
     });
   }
 
-  registerClearHistoryEvent() {
-    document.getElementById("clearHistory").addEventListener("click", () => {
-      createConfirmationModal("确定要清空所有历史记录吗？", () => {
-        historyList.clearHistoryList();
-        showToast("历史记录已清空");
-      });
-    });
-  }
-
   registerSearchEvent() {
     const searchInput = document.getElementById("search");
     searchInput.addEventListener(
@@ -349,12 +325,15 @@ class HistoryList {
     if (historyListDataMap[historyID] == null) {
       if (historySortIDList.length >= maxHistoryCount) {
         const deleteID = historySortIDList.pop();
+        if (
+          clipboardData.type === "image" &&
+          favoritesListDataMap[deleteID] == null
+        ) {
+          DeleteFile(historyListDataMap[deleteID].content);
+        }
         dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
         delete historyListDataMap[deleteID];
         dbStorage.removeData(deleteID);
-        if (clipboardData.type === "image") {
-          DeleteFile(historyListDataMap[deleteID].content);
-        }
       }
       historySortIDList.unshift(historyID);
       dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
@@ -389,14 +368,15 @@ class HistoryList {
 
   clearHistoryList() {
     for (const historyID of historySortIDList) {
-      delete historyListDataMap[historyID];
-      dbStorage.removeData(historyID);
       if (
-        historyListDataMap[historyID] &&
-        historyListDataMap[historyID].type === "image"
+        historyListDataMap[historyID] != null &&
+        historyListDataMap[historyID].type === "image" &&
+        favoritesListDataMap[historyID] == null
       ) {
         DeleteFile(historyListDataMap[historyID].content);
       }
+      delete historyListDataMap[historyID];
+      dbStorage.removeData(historyID);
     }
     historySortIDList = [];
     dbStorage.removeData(HISTORY_SORT_ID_LIST);
@@ -478,7 +458,10 @@ class FavoritesList {
   }
 
   addContentToFavoritesList(clipboardData) {
-    const favoritesID = GenerateMD5Hash(clipboardData.content);
+    let favoritesID = GenerateMD5Hash(clipboardData.content);
+    if (clipboardData.type === "image") {
+      favoritesID = clipboardData.id;
+    }
     if (favoritesListDataMap[favoritesID] == null) {
       favoritesSortIDList.unshift(favoritesID);
       dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
@@ -494,42 +477,68 @@ class FavoritesList {
 
   cancelFavorite(favoritesID) {
     const index = favoritesSortIDList.findIndex((id) => id == favoritesID);
+    if (favoritesListDataMap[favoritesID].type === "image") {
+      console.log("favoritesID", favoritesID);
+      DeleteFile(favoritesListDataMap[favoritesID].content);
+    }
     favoritesSortIDList.splice(index, 1);
     dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
     delete favoritesListDataMap[favoritesID];
     dbStorage.removeData(favoritesID);
-    if (favoritesListDataMap[favoritesID].type === "image") {
-      DeleteFile(favoritesListDataMap[favoritesID].content);
-    }
     this.renderFavoritesList();
   }
 
   renderFavoritesList(ids = favoritesSortIDList) {
     const favoritesElement = document.getElementById("favorites");
-    let favoritesItemHTMLList = [];
-    for (const favoritesID of ids) {
-      let favoritesItem = favoritesListDataMap[favoritesID];
-      if (favoritesItem == null) continue;
-      favoritesItemHTMLList.push(`
-      <div class="history-item favorite-item" favorites-id="${favoritesID}">
-        <div class="content">
-          ${contentTools.renderContent(favoritesItem)}
-        </div>
-        <div class="tags">
-          ${this._renderTags(favoritesItem.tags)}
-        </div>
-        <div class="actions">
-          <button class="copy-btn" favorites-id="${favoritesID}">复制</button>
-          <button class="remove-favorite-btn" favorites-id="${favoritesID}">取消收藏</button>
-          <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
-          <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
-          <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
-        </div>
-      </div>
-      `);
-    }
-    favoritesElement.innerHTML = favoritesItemHTMLList.join("");
-    registerEvent.registerFavoritesItemEvent();
+    favoritesElement.innerHTML = ""; // 清空现有内容
+
+    const batchSize = 10; // 每批渲染的项目数
+    let currentIndex = 0;
+
+    const renderBatch = () => {
+      const fragment = document.createDocumentFragment();
+      const endIndex = Math.min(currentIndex + batchSize, ids.length);
+
+      for (let i = currentIndex; i < endIndex; i++) {
+        const favoritesID = ids[i];
+        const favoritesItem = favoritesListDataMap[favoritesID];
+        if (favoritesItem == null) continue;
+
+        const itemElement = document.createElement("div");
+        itemElement.className = "history-item favorite-item";
+        itemElement.setAttribute("favorites-id", favoritesID);
+        itemElement.innerHTML = `
+          <div class="content">
+            ${contentTools.renderContent(favoritesItem)}
+          </div>
+          <div class="tags">
+            ${this._renderTags(favoritesItem.tags)}
+          </div>
+          <div class="actions">
+            <button class="copy-btn" favorites-id="${favoritesID}">复制</button>
+            <button class="remove-favorite-btn" favorites-id="${favoritesID}">取消收藏</button>
+            <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
+            <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
+            <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
+          </div>
+        `;
+        fragment.appendChild(itemElement);
+      }
+
+      favoritesElement.appendChild(fragment);
+      currentIndex = endIndex;
+
+      if (currentIndex < ids.length) {
+        // 如果还有更多项目要渲染，安排下一批
+        requestAnimationFrame(renderBatch);
+      } else {
+        // 所有项目都已渲染完毕，注册事件
+        registerEvent.registerFavoritesItemEvent();
+      }
+    };
+
+    // 开始渲染第一批
+    renderBatch();
   }
 
   _renderTags(tags) {
@@ -561,6 +570,9 @@ class FavoritesList {
   exportFavoritesList(filePath, data) {
     for (const [k, v] of Object.entries(data)) {
       if (v == null) delete data[k];
+      if (v.type === "image") {
+        data[k].content = ReadImageFile(v.content);
+      }
     }
     ExportFavoritesFile(filePath, JSON.stringify(data));
   }
@@ -570,6 +582,21 @@ class FavoritesList {
     if (data == null) return;
     for (const [_, v] of Object.entries(data)) {
       if (v == null) continue;
+      if (v.type === "image") {
+        // 检查 Buffer 是否可用，如果不可用，使用替代方法
+        if (window.preload.Buffer && window.preload.Buffer.from) {
+          v.content = SaveFile(
+            window.preload.Buffer.from(v.content.data),
+            `clipboard_image_${v.id}.png`
+          );
+        } else {
+          // 使用替代方法，例如 Uint8Array
+          v.content = SaveFile(
+            new Uint8Array(v.content.data),
+            `clipboard_image_${v.id}.png`
+          );
+        }
+      }
       this.addContentToFavoritesList(v);
     }
     this.renderFavoritesList();
@@ -577,6 +604,9 @@ class FavoritesList {
 
   clearFavoritesList() {
     for (const favoritesID of favoritesSortIDList) {
+      if (favoritesListDataMap[favoritesID].type === "image") {
+        DeleteFile(favoritesListDataMap[favoritesID].content);
+      }
       delete favoritesListDataMap[favoritesID];
       dbStorage.removeData(favoritesID);
     }
@@ -622,15 +652,12 @@ function showSection(sectionId = HISTORY_SECTION) {
     )
     .classList.add("active");
 
-  const clearHistoryBtn = document.getElementById("clearHistory");
   const searchInput = document.getElementById("search");
   const importFavoritesBtn = document.getElementById("importFavorites");
   const exportFavoritesBtn = document.getElementById("exportFavorites");
 
   if (sectionId === HISTORY_SECTION || sectionId === FAVORITES_SECTION) {
     searchInput.style.display = "block";
-    clearHistoryBtn.style.display =
-      sectionId === HISTORY_SECTION ? "block" : "none";
     importFavoritesBtn.style.display =
       sectionId === FAVORITES_SECTION ? "block" : "none";
     exportFavoritesBtn.style.display =
@@ -645,7 +672,6 @@ function showSection(sectionId = HISTORY_SECTION) {
       );
     }
   } else {
-    clearHistoryBtn.style.display = "none";
     searchInput.style.display = "none";
     importFavoritesBtn.style.display = "none";
     exportFavoritesBtn.style.display = "none";
@@ -737,40 +763,55 @@ function exitAPP() {
   utools.outPlugin();
 }
 
-utools.onPluginEnter(() => {
-  // register event
-  registerEvent.registerSidebarEvent();
-  registerEvent.registerSettingsEvent();
-  registerEvent.registerClearHistoryEvent();
-  registerEvent.registerSearchEvent();
-  registerEvent.registerFavoritesEvent();
-  // need to render history list when the first enter app
-  historyList.renderHistoryList();
-  // need to render favorites list when the first enter app
-  favoritesList.renderFavoritesList();
-  // default show history section
-  showSection(HISTORY_SECTION);
-});
-
 function initAPP() {
   settings = new Settings();
   settings.init();
 
-  adjustSidebarWidth();
-
   contentTools = new ContentTools();
+
+  // register event
   registerEvent = new RegisterEvent();
+  registerEvent.registerSidebarEvent();
+  registerEvent.registerSettingsEvent();
+  registerEvent.registerSearchEvent();
+  registerEvent.registerFavoritesEvent();
+
+  historyList = new HistoryList();
+  historyList.initHistoryList();
+  historyList.renderHistoryList();
+
+  favoritesList = new FavoritesList();
+  favoritesList.initFavoritesList();
+  favoritesList.renderFavoritesList();
+
+  showSection(HISTORY_SECTION);
+  adjustSidebarWidth();
 
   CheckSystemClipboard(async (clipboardData) => {
     await historyList.addContentToHistoryList(clipboardData);
     historyList.renderHistoryList();
   });
 
-  historyList = new HistoryList();
-  historyList.initHistoryList();
+  // 检查必要的 preload 函数是否都已正确加载
+  const requiredPreloadFunctions = [
+    'dbStorage',
+    'CheckSystemClipboard',
+    'CopyToSystemClipboard',
+    'GenerateMD5Hash',
+    'ExportSingleHistoryItem',
+    'ReadFavoritesFile',
+    'ExportFavoritesFile',
+    'SaveFile',
+    'DeleteFile',
+    'ReadImageFile',
+    'Buffer'
+  ];
 
-  favoritesList = new FavoritesList();
-  favoritesList.initFavoritesList();
+  for (const func of requiredPreloadFunctions) {
+    if (typeof window.preload[func] === 'undefined') {
+      console.error(`预加载函数 ${func} 未定义。请检查 preload.js 文件。`);
+    }
+  }
 }
 
 initAPP();
