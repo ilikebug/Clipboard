@@ -18,6 +18,7 @@ const {
   ReadFile,
   SaveFile,
   DeleteFile,
+  ReadImageFile,
 } = window.preload;
 
 const CHECK_CLIPBOARD_INTERVAL = 200;
@@ -66,14 +67,22 @@ class Settings {
 let contentTools = null;
 class ContentTools {
   renderContent(item) {
+    if (item.type === "image") {
+      return `
+        <div class="image-container">
+          <div class="loading-spinner"></div>
+          <img src="${item.content}" 
+               alt="Clipboard image" 
+               style="max-width: 100%; max-height: 100px; display: none;" 
+               onload="this.style.display='inline'; this.previousElementSibling.style.display='none';"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+          <p style="display: none;">无法加载图片</p>
+        </div>
+      `;
+    }
     switch (item.type) {
       case "text":
         return this.formatTextContent(item.content);
-      case "image":
-        // 使用缩略图或懒加载技术
-        return `<img src="${item.content}" alt="Clipboard image" style="max-width: 100%; max-height: 100px;" loading="lazy">`;
-      case "files":
-        return `<p>文件: ${item.content}</p>`;
       default:
         return `<p>未知类型: ${item.type}</p>`;
     }
@@ -335,7 +344,7 @@ class RegisterEvent {
 let historyList = null;
 class HistoryList {
   addContentToHistoryList(clipboardData) {
-    const historyID = GenerateMD5Hash(clipboardData.content);
+    const historyID = clipboardData.id;
     const maxHistoryCount = settings.get().maxHistoryCount;
     if (historyListDataMap[historyID] == null) {
       if (historySortIDList.length >= maxHistoryCount) {
@@ -343,6 +352,9 @@ class HistoryList {
         dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
         delete historyListDataMap[deleteID];
         dbStorage.removeData(deleteID);
+        if (clipboardData.type === "image") {
+          DeleteFile(historyListDataMap[deleteID].content);
+        }
       }
       historySortIDList.unshift(historyID);
       dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
@@ -379,6 +391,12 @@ class HistoryList {
     for (const historyID of historySortIDList) {
       delete historyListDataMap[historyID];
       dbStorage.removeData(historyID);
+      if (
+        historyListDataMap[historyID] &&
+        historyListDataMap[historyID].type === "image"
+      ) {
+        DeleteFile(historyListDataMap[historyID].content);
+      }
     }
     historySortIDList = [];
     dbStorage.removeData(HISTORY_SORT_ID_LIST);
@@ -387,28 +405,51 @@ class HistoryList {
 
   renderHistoryList(ids = historySortIDList) {
     const historyElement = document.getElementById("history");
+    historyElement.innerHTML = ""; // 清空现有内容
 
-    let historyItemHTMLList = [];
-    for (const historyID of ids) {
-      const historyItem = historyListDataMap[historyID];
-      if (historyItem == null) continue;
-      historyItemHTMLList.push(`
-      <div class="history-item" history-id="${historyID}">
-        <div class="content">
-          ${contentTools.renderContent(historyItem)}
-        </div>
-        <div class="actions">
-          <button class="copy-btn" history-id="${historyID}">复制</button>
-          <button class="export-btn" history-id="${historyID}">导出</button>
-          <button class="favorite-btn" history-id="${historyID}">收藏</button>
-          <span class="timestamp">${new Date(historyItem.timestamp).toLocaleString()}</span>
-          <span class="timestamp">${contentTools.formatSize(Size(historyItem.content))}</span>
-        </div>
-      </div>
-    `);
-    }
-    historyElement.innerHTML = historyItemHTMLList.join("");
-    registerEvent.registerHistoryItemEvent();
+    const batchSize = 10; // 每批渲染的项目数
+    let currentIndex = 0;
+
+    const renderBatch = () => {
+      const fragment = document.createDocumentFragment();
+      const endIndex = Math.min(currentIndex + batchSize, ids.length);
+
+      for (let i = currentIndex; i < endIndex; i++) {
+        const historyID = ids[i];
+        const historyItem = historyListDataMap[historyID];
+        if (historyItem == null) continue;
+
+        const itemElement = document.createElement("div");
+        itemElement.className = "history-item";
+        itemElement.setAttribute("history-id", historyID);
+        itemElement.innerHTML = `
+          <div class="content">
+            ${contentTools.renderContent(historyItem)}
+          </div>
+          <div class="actions">
+            <button class="copy-btn" history-id="${historyID}">复制</button>
+            <button class="export-btn" history-id="${historyID}">导出</button>
+            <button class="favorite-btn" history-id="${historyID}">收藏</button>
+            <span class="timestamp">${new Date(historyItem.timestamp).toLocaleString()}</span>
+          </div>
+        `;
+        fragment.appendChild(itemElement);
+      }
+
+      historyElement.appendChild(fragment);
+      currentIndex = endIndex;
+
+      if (currentIndex < ids.length) {
+        // 如果还有更多项目要渲染，安排下一批
+        requestAnimationFrame(renderBatch);
+      } else {
+        // 所有项目都已渲染完毕，注册事件
+        registerEvent.registerHistoryItemEvent();
+      }
+    };
+
+    // 开始渲染第一批
+    renderBatch();
   }
 
   searchHistory(keyword) {
@@ -457,6 +498,9 @@ class FavoritesList {
     dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
     delete favoritesListDataMap[favoritesID];
     dbStorage.removeData(favoritesID);
+    if (favoritesListDataMap[favoritesID].type === "image") {
+      DeleteFile(favoritesListDataMap[favoritesID].content);
+    }
     this.renderFavoritesList();
   }
 
@@ -480,7 +524,6 @@ class FavoritesList {
           <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
           <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
           <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
-          <span class="timestamp">${contentTools.formatSize(Size(favoritesItem.content))}</span>
         </div>
       </div>
       `);
@@ -718,8 +761,8 @@ function initAPP() {
   contentTools = new ContentTools();
   registerEvent = new RegisterEvent();
 
-  CheckSystemClipboard((clipboardData) => {
-    historyList.addContentToHistoryList(clipboardData);
+  CheckSystemClipboard(async (clipboardData) => {
+    await historyList.addContentToHistoryList(clipboardData);
     historyList.renderHistoryList();
   });
 

@@ -3,10 +3,16 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { size } = require("lodash");
-const clipboardWatcher = require("electron-clipboard-watcher");
 
-function GenerateMD5Hash(data) {
-  return crypto.createHash("md5").update(data).digest("hex");
+function GenerateMD5Hash(data, type) {
+  if (type === "image") {
+    const bitmap = data.getBitmap();
+    // 只使用前 10KB 的图像数据来生成哈希
+    const imageData = Buffer.from(bitmap).slice(0, 1024 * 1024);
+    return crypto.createHash("md5").update(imageData).digest("hex");
+  } else {
+    return crypto.createHash("md5").update(data).digest("hex");
+  }
 }
 
 class DBStorage {
@@ -27,20 +33,29 @@ class DBStorage {
 }
 
 // 检查系统剪贴板
-function CheckSystemClipboard(callback) {
-  clipboardWatcher({
-    watchDelay: 1000,
-    onTextChange: (text) => {
-      callback({ type: "text", content: text });
-    },
-    onImageChange: (image) => {
-      const imageDataUrl = image.toDataURL();
-      callback({ type: "image", content: imageDataUrl });
-    },
-    onFilesChange: (files) => {
-      callback({ type: "files", content: files });
-    },
-  });
+let lastTextID = "";
+let lastImageID = "";
+async function CheckSystemClipboard(callback) {
+  setInterval(async () => {
+    const text = clipboard.readText();
+    const image = clipboard.readImage();
+
+    const textID = GenerateMD5Hash(text, "text");
+    if (text != "" && textID !== lastTextID) {
+      lastTextID = textID;
+      callback({ type: "text", content: text, id: textID });
+    }
+
+    const imageID = GenerateMD5Hash(image, "image");
+    if (!image.isEmpty() && imageID !== lastImageID) {
+      lastImageID = imageID;
+      const filePath = SaveFile(
+        image.toPNG(),
+        `clipboard_image_${imageID}.png`
+      );
+      callback({ type: "image", content: filePath, id: imageID });
+    }
+  }, 2000);
 }
 
 // 设置数据到系统剪贴板
@@ -49,7 +64,8 @@ function CopyToSystemClipboard(item) {
     if (item.type === "text") {
       clipboard.writeText(item.content);
     } else if (item.type === "image") {
-      const image = nativeImage.createFromDataURL(item.content);
+      const data = ReadImageFile(item.content);
+      const image = nativeImage.createFromDataURL(data);
       clipboard.writeImage(image);
     } else if (item.type === "files") {
       clipboard.writeBuffer(
@@ -157,6 +173,16 @@ function SaveFile(content, fileName) {
   }
 }
 
+function ReadImageFile(filePath) {
+  try {
+    const imageBuffer = fs.readFileSync(filePath);
+    return nativeImage.createFromBuffer(imageBuffer);
+  } catch (error) {
+    console.error("读取图片文件失败:", error);
+    return null;
+  }
+}
+
 // 修改 window.preload 对象
 window.preload = {
   dbStorage: new DBStorage(),
@@ -176,4 +202,5 @@ window.preload = {
   ReadFile,
   SaveFile,
   DeleteFile,
+  ReadImageFile,
 };
