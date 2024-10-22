@@ -31,16 +31,13 @@ function CheckSystemClipboard(callback) {
   clipboardWatcher({
     watchDelay: 1000,
     onTextChange: (text) => {
-      console.log("文本变化", text);
       callback({ type: "text", content: text });
     },
     onImageChange: (image) => {
-      console.log("图片变化", image);
       const imageDataUrl = image.toDataURL();
       callback({ type: "image", content: imageDataUrl });
     },
     onFilesChange: (files) => {
-      console.log("文件变化", files);
       callback({ type: "files", content: files });
     },
   });

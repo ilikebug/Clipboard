@@ -86,15 +86,6 @@ class ContentTools {
     });
   }
 
-  escapeHtml(unsafe) {
-    return unsafe
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
   pasteContentToSystem() {
     if (utools.isMacOS()) {
       utools.simulateKeyboardTap("v", "command");
@@ -403,7 +394,7 @@ class HistoryList {
       if (historyItem == null) continue;
       historyItemHTMLList.push(`
       <div class="history-item" history-id="${historyID}">
-        <div class="content" title="${contentTools.escapeHtml(historyItem.content)}">
+        <div class="content">
           ${contentTools.renderContent(historyItem)}
         </div>
         <div class="actions">
@@ -477,7 +468,7 @@ class FavoritesList {
       if (favoritesItem == null) continue;
       favoritesItemHTMLList.push(`
       <div class="history-item favorite-item" favorites-id="${favoritesID}">
-        <div class="content" title="${contentTools.escapeHtml(favoritesItem.content)}">
+        <div class="content">
           ${contentTools.renderContent(favoritesItem)}
         </div>
         <div class="tags">
@@ -622,8 +613,6 @@ function showSection(sectionId = HISTORY_SECTION) {
       settings.get().maxHistoryCount;
     document.getElementById("pasteToSystem").checked =
       settings.get().pasteToSystem;
-    document.getElementById("showMemoryUsage").checked =
-      settings.get().showMemoryUsage;
   }
 }
 
