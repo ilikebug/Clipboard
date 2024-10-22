@@ -75,7 +75,7 @@ body, html {
 }
 
 .sidebar-btn.active {
-  background-color: #e0e0e0;
+  color: #4a90e2;
   font-weight: bold;
 }
 
@@ -618,3 +618,4 @@ button:hover {
 .favorite-item.selected:active {
   animation: flash 0.3s;
 }
+

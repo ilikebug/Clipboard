@@ -333,7 +333,7 @@ class RegisterEvent {
   }
 
   switchFocusedButton() {
-    const buttons = ["history", "favorites", "settings"];
+    const buttons = ["history", "favorites"];
     const currentIndex = buttons.indexOf(currentFocusedButton);
     const nextIndex = (currentIndex + 1) % buttons.length;
     currentFocusedButton = buttons[nextIndex];
@@ -348,14 +348,12 @@ class RegisterEvent {
   }
 
   updateButtonFocus() {
-    document.querySelectorAll(".sidebar-btn").forEach((btn) => {
-      btn.classList.remove("focused");
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
+      btn.classList.remove('active');
     });
     document
-      .getElementById(
-        `show${currentFocusedButton.charAt(0).toUpperCase() + currentFocusedButton.slice(1)}`
-      )
-      .classList.add("focused");
+      .getElementById(`show${currentFocusedButton.charAt(0).toUpperCase() + currentFocusedButton.slice(1)}`)
+      .classList.add('active');
   }
 
   navigateList(direction) {
