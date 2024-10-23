@@ -329,6 +329,9 @@ class RegisterEvent {
     } else if (event.key === "Enter") {
       event.preventDefault();
       this.activateCurrentItem();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      exitAPP();
     }
   }
 
@@ -348,12 +351,14 @@ class RegisterEvent {
   }
 
   updateButtonFocus() {
-    document.querySelectorAll('.sidebar-btn').forEach(btn => {
-      btn.classList.remove('active');
+    document.querySelectorAll(".sidebar-btn").forEach((btn) => {
+      btn.classList.remove("active");
     });
     document
-      .getElementById(`show${currentFocusedButton.charAt(0).toUpperCase() + currentFocusedButton.slice(1)}`)
-      .classList.add('active');
+      .getElementById(
+        `show${currentFocusedButton.charAt(0).toUpperCase() + currentFocusedButton.slice(1)}`
+      )
+      .classList.add("active");
   }
 
   navigateList(direction) {
