@@ -649,7 +649,7 @@ class FavoritesList {
   }
 
   editTags(favoritesID, tags) {
-    favoritesListDataMap[favoritesID].tags = tags;
+    favoritesListDataMap[favoritesID].tags = String(tags).split(",");
     dbStorage.setData(favoritesID, favoritesListDataMap[favoritesID]);
     this.renderFavoritesList();
   }
@@ -659,12 +659,22 @@ class FavoritesList {
       favoritesSortIDList.filter((id) => {
         if (favoritesListDataMap[id] == null) return false;
         if (keyword.startsWith("#")) {
-          if (favoritesListDataMap[id].tags == null) return false;
-          return favoritesListDataMap[id].tags.includes(keyword.slice(1));
+          return this.tagsIncludes(
+            favoritesListDataMap[id].tags,
+            keyword.split("#")[1]
+          );
         }
         return favoritesListDataMap[id].content.includes(keyword);
       })
     );
+  }
+
+  tagsIncludes(tags, keyword) {
+    if (tags == null) return false;
+    for (const tag of tags) {
+      if (tag.includes(keyword)) return true;
+    }
+    return false;
   }
 
   exportFavoritesList(filePath, data) {
