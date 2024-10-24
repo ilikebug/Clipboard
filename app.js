@@ -396,14 +396,7 @@ class RegisterEvent {
         setTimeout(() => {
           selectedItem.style.animation = "";
         }, 300);
-
-        // 执行粘贴操作
-        if (settings.get().pasteToSystem) {
-          contentTools.pasteContentToSystem();
-        }
-
-        // 退出应用
-        exitAPP();
+        copyBtn.click();
       }
     }
   }
