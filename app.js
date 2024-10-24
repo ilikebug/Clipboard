@@ -387,8 +387,16 @@ class RegisterEvent {
     );
     if (selectedItem) {
       const copyBtn = selectedItem.querySelector(".copy-btn");
-      if (copyBtn) {
-        copyBtn.click();
+      const dataID =
+        copyBtn.getAttribute("history-id") ||
+        copyBtn.getAttribute("favorites-id");
+      const data = historyListDataMap[dataID] || favoritesListDataMap[dataID];
+      if (data) {
+        CopyToSystemClipboard(data);
+        if (settings.get().pasteToSystem) {
+          contentTools.pasteContentToSystem();
+        }
+        exitAPP();
       }
     }
   }
