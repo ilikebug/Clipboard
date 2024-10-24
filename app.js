@@ -418,7 +418,7 @@ class HistoryList {
       if (historySortIDList.length >= maxHistoryCount) {
         const deleteID = historySortIDList.pop();
         if (
-          clipboardData.type === "image" &&
+          historyListDataMap[deleteID].type === "image" &&
           favoritesListDataMap[deleteID] == null
         ) {
           DeleteFile(historyListDataMap[deleteID].content);
@@ -550,10 +550,7 @@ class FavoritesList {
   }
 
   addContentToFavoritesList(clipboardData) {
-    let favoritesID = GenerateMD5Hash(clipboardData.content);
-    if (clipboardData.type === "image") {
-      favoritesID = clipboardData.id;
-    }
+    let favoritesID = clipboardData.id;
     if (favoritesListDataMap[favoritesID] == null) {
       favoritesSortIDList.unshift(favoritesID);
       dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
@@ -569,8 +566,10 @@ class FavoritesList {
 
   cancelFavorite(favoritesID) {
     const index = favoritesSortIDList.findIndex((id) => id == favoritesID);
-    if (favoritesListDataMap[favoritesID].type === "image") {
-      console.log("favoritesID", favoritesID);
+    if (
+      favoritesListDataMap[favoritesID].type === "image" &&
+      historyListDataMap[favoritesID] == null
+    ) {
       DeleteFile(favoritesListDataMap[favoritesID].content);
     }
     favoritesSortIDList.splice(index, 1);
@@ -696,7 +695,10 @@ class FavoritesList {
 
   clearFavoritesList() {
     for (const favoritesID of favoritesSortIDList) {
-      if (favoritesListDataMap[favoritesID].type === "image") {
+      if (
+        favoritesListDataMap[favoritesID].type === "image" &&
+        historyListDataMap[favoritesID] == null
+      ) {
         DeleteFile(favoritesListDataMap[favoritesID].content);
       }
       delete favoritesListDataMap[favoritesID];
