@@ -180,6 +180,7 @@ class RegisterEvent {
     document.getElementById("saveSettings").addEventListener("click", () => {
       const maxHistoryCount = document.getElementById("maxHistoryCount").value;
       const pasteToSystem = document.getElementById("pasteToSystem").checked;
+      settings.set({ maxHistoryCount, pasteToSystem });
       showToast("设置保存成功");
     });
 
@@ -359,7 +360,9 @@ class RegisterEvent {
 
   navigateList(direction) {
     const activeSection = document.querySelector(".content-section.active");
-    const items = activeSection.querySelectorAll(".history-item, .favorite-item");
+    const items = activeSection.querySelectorAll(
+      ".history-item, .favorite-item"
+    );
     if (items.length === 0) return;
 
     currentSelectedItem += direction;
@@ -379,7 +382,9 @@ class RegisterEvent {
 
   activateCurrentItem() {
     const activeSection = document.querySelector(".content-section.active");
-    const selectedItem = activeSection.querySelector(".history-item.selected, .favorite-item.selected");
+    const selectedItem = activeSection.querySelector(
+      ".history-item.selected, .favorite-item.selected"
+    );
     if (selectedItem) {
       const copyBtn = selectedItem.querySelector(".copy-btn");
       if (copyBtn) {
@@ -777,7 +782,7 @@ function showSection(sectionId = HISTORY_SECTION) {
   // 重置当前选中的项目
   currentSelectedItem = -1;
   // 移除所有项目的选中状态
-  document.querySelectorAll(".history-item, .favorite-item").forEach(item => {
+  document.querySelectorAll(".history-item, .favorite-item").forEach((item) => {
     item.classList.remove("selected");
   });
 
@@ -884,7 +889,7 @@ function initAPP() {
   registerEvent.registerSettingsEvent();
   registerEvent.registerSearchEvent();
   registerEvent.registerFavoritesEvent();
-  registerEvent.updateButtonFocus(); 
+  registerEvent.updateButtonFocus();
 
   historyList = new HistoryList();
   historyList.initHistoryList();
