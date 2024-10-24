@@ -566,6 +566,7 @@ class FavoritesList {
         id: favoritesID,
         content: clipboardData.content,
         type: clipboardData.type,
+        tags: clipboardData.tags,
         timestamp: Date.now(),
       };
       dbStorage.setData(favoritesID, favoritesListDataMap[favoritesID]);
