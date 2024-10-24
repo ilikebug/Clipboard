@@ -337,16 +337,12 @@ class RegisterEvent {
 
   switchFocusedButton() {
     const buttons = ["history", "favorites"];
-    const currentIndex = buttons.indexOf(currentFocusedButton);
+    const currentIndex = buttons.indexOf(currentSelectedTab);
     const nextIndex = (currentIndex + 1) % buttons.length;
-    currentFocusedButton = buttons[nextIndex];
+    currentSelectedTab = buttons[nextIndex];
     this.updateButtonFocus();
     showSection(
-      currentFocusedButton === "settings"
-        ? SETTINGS_SECTION
-        : currentFocusedButton === "favorites"
-          ? FAVORITES_SECTION
-          : HISTORY_SECTION
+      currentSelectedTab === "favorites" ? FAVORITES_SECTION : HISTORY_SECTION
     );
   }
 
@@ -356,15 +352,14 @@ class RegisterEvent {
     });
     document
       .getElementById(
-        `show${currentFocusedButton.charAt(0).toUpperCase() + currentFocusedButton.slice(1)}`
+        `show${currentSelectedTab.charAt(0).toUpperCase() + currentSelectedTab.slice(1)}`
       )
       .classList.add("active");
   }
 
   navigateList(direction) {
-    const items = document.querySelectorAll(
-      `#${currentFocusedButton} .${currentFocusedButton}-item`
-    );
+    const activeSection = document.querySelector(".content-section.active");
+    const items = activeSection.querySelectorAll(".history-item, .favorite-item");
     if (items.length === 0) return;
 
     currentSelectedItem += direction;
@@ -383,19 +378,11 @@ class RegisterEvent {
   }
 
   activateCurrentItem() {
-    const selectedItem = document.querySelector(
-      `#${currentFocusedButton} .${currentFocusedButton}-item.selected`
-    );
+    const activeSection = document.querySelector(".content-section.active");
+    const selectedItem = activeSection.querySelector(".history-item.selected, .favorite-item.selected");
     if (selectedItem) {
       const copyBtn = selectedItem.querySelector(".copy-btn");
       if (copyBtn) {
-        // copyBtn.click(); // 触发复制操作
-
-        // 添加视觉反馈
-        selectedItem.style.animation = "flash 0.3s";
-        setTimeout(() => {
-          selectedItem.style.animation = "";
-        }, 300);
         copyBtn.click();
       }
     }
@@ -789,9 +776,13 @@ function showSection(sectionId = HISTORY_SECTION) {
 
   // 重置当前选中的项目
   currentSelectedItem = -1;
+  // 移除所有项目的选中状态
+  document.querySelectorAll(".history-item, .favorite-item").forEach(item => {
+    item.classList.remove("selected");
+  });
 
   // 更新当前焦点按钮
-  currentFocusedButton =
+  currentSelectedTab =
     sectionId === SETTINGS_SECTION
       ? "settings"
       : sectionId === FAVORITES_SECTION
@@ -893,6 +884,7 @@ function initAPP() {
   registerEvent.registerSettingsEvent();
   registerEvent.registerSearchEvent();
   registerEvent.registerFavoritesEvent();
+  registerEvent.updateButtonFocus(); 
 
   historyList = new HistoryList();
   historyList.initHistoryList();
@@ -930,8 +922,6 @@ function initAPP() {
       console.error(`预加载函数 ${func} 未定义。请检查 preload.js 文件。`);
     }
   }
-
-  registerEvent.updateButtonFocus(); // 初始化按钮焦点
 }
 
 initAPP();
