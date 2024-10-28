@@ -1,14 +1,31 @@
 body, html {
   margin: 0;
-  padding: 0;
+  padding: 0; /* 改为具体的值 */
   height: 100%;
+  width: 100%; /* 添加这一行 */
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background-color: #f0f4f8; /* 添加这一行确保背景色 */
+  position: relative; /* 添加这一行 */
+  box-sizing: border-box; /* 添加这一行 */
+}
+
+/* 确保所有元素都使用 border-box */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 #app {
   display: flex;
-  height: 100vh;
+  height: 100%;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: #f0f4f8;
 }
 
