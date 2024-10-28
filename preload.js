@@ -32,50 +32,61 @@ class DBStorage {
   }
 }
 
-// 替换原有的 CheckSystemClipboard 函数
-function throttle(func, limit) {
-  let inThrottle;
-  return function() {
-    const args = arguments;
-    const context = this;
-    if (!inThrottle) {
-      func.apply(context, args);
-      inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
-    }
-  }
+// 添加防抖函数
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 async function CheckSystemClipboard(callback) {
   let lastTextID = "";
   let lastImageID = "";
+  let isProcessing = false;
 
-  const checkClipboard = throttle(async () => {
-    const text = clipboard.readText();
-    const image = clipboard.readImage();
+  const checkClipboard = async () => {
+    if (isProcessing) return;
+    isProcessing = true;
 
-    const textID = GenerateMD5Hash(text, "text");
-    if (text !== "" && textID !== lastTextID) {
-      lastTextID = textID;
-      callback({ type: "text", content: text, id: textID });
+    try {
+      const text = clipboard.readText();
+      const image = clipboard.readImage();
+
+      // 检查文本
+      const textID = GenerateMD5Hash(text, "text");
+      if (text !== "" && textID !== lastTextID) {
+        lastTextID = textID;
+        callback({ type: "text", content: text, id: textID });
+      }
+
+      // 检查图片
+      const imageID = GenerateMD5Hash(image, "image");
+      if (!image.isEmpty() && imageID !== lastImageID) {
+        lastImageID = imageID;
+        const filePath = SaveFile(
+          image.toPNG(),
+          `clipboard_image_${imageID}.png`
+        );
+        callback({ type: "image", content: filePath, id: imageID });
+      }
+    } finally {
+      isProcessing = false;
     }
+  };
 
-    const imageID = GenerateMD5Hash(image, "image");
-    if (!image.isEmpty() && imageID !== lastImageID) {
-      lastImageID = imageID;
-      const filePath = SaveFile(
-        image.toPNG(),
-        `clipboard_image_${imageID}.png`
-      );
-      callback({ type: "image", content: filePath, id: imageID });
-    }
-  }, 100); // 将节流时间设置为100毫秒
+  const debouncedCheck = debounce(checkClipboard, 50); // 使用50毫秒的防抖
 
-  // 每500毫秒检查一次剪贴板
-  setInterval(checkClipboard, 500);
+  // 每200毫秒检查一次剪贴板
+  setInterval(debouncedCheck, 200);
 
   // 监听主进程发送的剪贴板变化事件
-  ipcRenderer.on('clipboard-changed', checkClipboard);
+  ipcRenderer.on("clipboard-changed", debouncedCheck);
 }
 
 // 设置数据到系统剪贴板
