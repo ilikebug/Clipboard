@@ -3,7 +3,6 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { Buffer } = require("buffer");
-const axios = require("axios");
 
 function GenerateMD5Hash(data, type) {
   if (type === "image") {
@@ -33,24 +32,11 @@ class DBStorage {
   }
 }
 
-// 添加防抖函数
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
 async function CheckSystemClipboard(callback) {
   let lastTextID = "";
   let lastImageID = "";
   let isProcessing = false;
-  let clipboardQueue = [];  // 添加队列来存储剪贴板变化
+  let clipboardQueue = []; // 添加队列来存储剪贴板变化
 
   const checkClipboard = async () => {
     if (isProcessing) return;
@@ -89,7 +75,7 @@ async function CheckSystemClipboard(callback) {
   };
 
   // 使用更短的检查间隔，确保能捕获到快速的变化
-  setInterval(checkClipboard, 20);  // 每20ms检查一次
+  setInterval(checkClipboard, 20); // 每20ms检查一次
 }
 
 // 设置数据到系统剪贴板
@@ -209,9 +195,14 @@ async function ocr(image, ak, sk) {
 
   // 返回新的 Promise
   return new Promise((resolve, reject) => {
-    axios(options)
-      .then((response) => {
-        resolve(response.data?.words_result || []);
+    fetch(options.url, {
+      method: options.method,
+      headers: options.headers,
+      body: new URLSearchParams(options.data),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        resolve(data?.words_result || []);
       })
       .catch((error) => {
         reject(error);
@@ -229,7 +220,12 @@ function getAccessToken(ak, sk) {
       sk,
   };
   return new Promise((resolve, reject) => {
-    axios(options)
+    fetch(options.url, {
+      method: options.method,
+      headers: options.headers,
+      body: new URLSearchParams(options.data),
+    })
+      .then((response) => response.json())
       .then((res) => {
         resolve(res.data.access_token);
       })
@@ -238,6 +234,10 @@ function getAccessToken(ak, sk) {
       });
   });
 }
+
+window.services = {
+  OcrImage: OcrImage,
+};
 
 // 修改 window.preload 对象
 window.preload = {
