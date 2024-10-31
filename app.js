@@ -940,6 +940,8 @@ function showSection(sectionId = HISTORY_SECTION) {
       settings.get().maxHistoryCount;
     document.getElementById("pasteToSystem").checked =
       settings.get().pasteToSystem;
+    document.getElementById("ocrAk").value = settings.get().ocrAk;
+    document.getElementById("ocrSk").value = settings.get().ocrSk;
   }
 
   // 重置当前选中的项目
