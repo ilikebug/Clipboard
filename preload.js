@@ -227,7 +227,7 @@ function getAccessToken(ak, sk) {
     })
       .then((response) => response.json())
       .then((res) => {
-        resolve(res.data.access_token);
+        resolve(res.access_token);
       })
       .catch((error) => {
         reject(error);
