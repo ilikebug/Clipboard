@@ -1,9 +1,10 @@
-const { clipboard, nativeImage, ipcRenderer } = require("electron");
+const { clipboard, nativeImage } = require("electron");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { Buffer } = require("buffer");
 const axios = require("axios");
+
 function GenerateMD5Hash(data, type) {
   if (type === "image") {
     const bitmap = data.getBitmap();
@@ -49,6 +50,7 @@ async function CheckSystemClipboard(callback) {
   let lastTextID = "";
   let lastImageID = "";
   let isProcessing = false;
+  let clipboardQueue = [];  // 添加队列来存储剪贴板变化
 
   const checkClipboard = async () => {
     if (isProcessing) return;
@@ -62,7 +64,7 @@ async function CheckSystemClipboard(callback) {
       const textID = GenerateMD5Hash(text, "text");
       if (text !== "" && textID !== lastTextID) {
         lastTextID = textID;
-        callback({ type: "text", content: text, id: textID });
+        clipboardQueue.push({ type: "text", content: text, id: textID });
       }
 
       // 检查图片
@@ -73,20 +75,21 @@ async function CheckSystemClipboard(callback) {
           image.toPNG(),
           `clipboard_image_${imageID}.png`
         );
-        callback({ type: "image", content: filePath, id: imageID });
+        clipboardQueue.push({ type: "image", content: filePath, id: imageID });
+      }
+
+      // 处理队列中的所有项
+      while (clipboardQueue.length > 0) {
+        const item = clipboardQueue.shift();
+        await callback(item);
       }
     } finally {
       isProcessing = false;
     }
   };
 
-  const debouncedCheck = debounce(checkClipboard, 50); // 使用50毫秒的防抖
-
-  // 每200毫秒检查一次剪贴板
-  setInterval(debouncedCheck, 100);
-
-  // 监听主进程发送的剪贴板变化事件
-  ipcRenderer.on("clipboard-changed", debouncedCheck);
+  // 使用更短的检查间隔，确保能捕获到快速的变化
+  setInterval(checkClipboard, 20);  // 每20ms检查一次
 }
 
 // 设置数据到系统剪贴板

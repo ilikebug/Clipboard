@@ -295,6 +295,10 @@ class RegisterEvent {
           ? favoritesItem.tags.join(", ")
           : "";
 
+        const searchInput = document.getElementById("search");
+        // 在打开模态框前暂时取消搜索框的焦点
+        searchInput.blur();
+
         const modal = createModal(
           "编辑标签",
           `
@@ -306,6 +310,11 @@ class RegisterEvent {
         const cancelButton = modal.querySelector("#modalCancel");
         const tagInput = modal.querySelector("#tagInput");
 
+        // 自动聚焦到标签输入框
+        setTimeout(() => {
+          tagInput.focus();
+        }, 100);
+
         confirmButton.addEventListener("click", () => {
           const newTags = tagInput.value;
           const tagArray = newTags
@@ -315,10 +324,14 @@ class RegisterEvent {
           favoritesList.editTags(favoritesID, tagArray);
           favoritesList.renderFavoritesList();
           document.body.removeChild(modal);
+          // 恢复搜索框焦点
+          searchInput.focus();
         });
 
         cancelButton.addEventListener("click", () => {
           document.body.removeChild(modal);
+          // 恢复搜索框焦点
+          searchInput.focus();
         });
       });
     });
@@ -418,13 +431,15 @@ class RegisterEvent {
       500
     );
 
-    // 搜索框失去焦点时的处理
+    // 修改失去焦点的处理逻辑
     searchInput.addEventListener("blur", (e) => {
-      // 如果不是点击了列表项,就保持焦点在搜索框
+      // 检查当前活动元素是否是标签输入框或模态框内的元素
       const activeElement = document.activeElement;
       if (
         !activeElement.closest(".history-item") &&
-        !activeElement.closest(".favorite-item")
+        !activeElement.closest(".favorite-item") &&
+        !activeElement.closest(".modal") && // 添加对模态框的检查
+        !activeElement.id === "tagInput" // 添加对标签输入框的检查
       ) {
         e.target.focus();
       }
@@ -433,6 +448,12 @@ class RegisterEvent {
 
   // 添加处理键盘事件的新方法
   handleKeyDown(event) {
+    // 如果当前焦点在模态框内或标签输入框上,不处理键盘事件
+    const activeElement = document.activeElement;
+    if (activeElement.closest(".modal") || activeElement.id === "tagInput") {
+      return;
+    }
+
     // 如果是可输入字符且不是功能键
     if (
       event.key.length === 1 &&
@@ -441,10 +462,9 @@ class RegisterEvent {
       !event.metaKey
     ) {
       const searchInput = document.getElementById("search");
-      // 如果搜索框可见
+      // 如果搜索框可见且当前不在编辑标签
       if (searchInput.style.display !== "none") {
         searchInput.focus();
-        // 不要阻止默认行为,让字符能输入到搜索框
         return;
       }
     }
@@ -460,6 +480,13 @@ class RegisterEvent {
       this.activateCurrentItem();
     } else if (event.key === "Escape") {
       event.preventDefault();
+      // 如果模态框打开,则关闭模态框
+      const modal = document.querySelector(".modal");
+      if (modal) {
+        document.body.removeChild(modal);
+        document.getElementById("search").focus();
+        return;
+      }
       exitAPP();
     }
   }
