@@ -83,7 +83,7 @@ async function CheckSystemClipboard(callback) {
   const debouncedCheck = debounce(checkClipboard, 50); // 使用50毫秒的防抖
 
   // 每200毫秒检查一次剪贴板
-  setInterval(debouncedCheck, 200);
+  setInterval(debouncedCheck, 100);
 
   // 监听主进程发送的剪贴板变化事件
   ipcRenderer.on("clipboard-changed", debouncedCheck);

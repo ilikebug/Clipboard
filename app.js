@@ -314,6 +314,8 @@ class RegisterEvent {
 
   registerSearchEvent() {
     const searchInput = document.getElementById("search");
+    
+    // 搜索输入事件
     searchInput.addEventListener(
       "input",
       (e) => {
@@ -322,10 +324,30 @@ class RegisterEvent {
       },
       500
     );
+
+    // 搜索框失去焦点时的处理
+    searchInput.addEventListener('blur', (e) => {
+      // 如果不是点击了列表项,就保持焦点在搜索框
+      const activeElement = document.activeElement;
+      if (!activeElement.closest('.history-item') && !activeElement.closest('.favorite-item')) {
+        e.target.focus();
+      }
+    });
   }
 
   // 添加处理键盘事件的新方法
   handleKeyDown(event) {
+    // 如果是可输入字符且不是功能键
+    if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const searchInput = document.getElementById("search");
+      // 如果搜索框可见
+      if (searchInput.style.display !== "none") {
+        searchInput.focus();
+        // 不要阻止默认行为,让字符能输入到搜索框
+        return;
+      }
+    }
+
     if (event.key === "Tab") {
       event.preventDefault();
       this.switchFocusedButton();
@@ -836,6 +858,8 @@ function showSection(sectionId = HISTORY_SECTION) {
 
   // 在函数末尾添加:
   registerEvent.updateTabSelection();
+
+  searchInput.blur();
 }
 
 function openLink(url) {
