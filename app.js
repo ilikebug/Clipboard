@@ -94,11 +94,13 @@ class ContentTools {
   }
 
   pasteContentToSystem() {
-    if (utools.isMacOS()) {
-      utools.simulateKeyboardTap("v", "command");
-    } else {
-      utools.simulateKeyboardTap("v", "ctrl");
-    }
+    setTimeout(() => {
+      if (utools.isMacOS()) {
+        utools.simulateKeyboardTap("v", "command");
+      } else {
+        utools.simulateKeyboardTap("v", "ctrl");
+      }
+    }, 0);
   }
 }
 
