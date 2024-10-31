@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { Buffer } = require("buffer");
-
+const axios = require("axios");
 function GenerateMD5Hash(data, type) {
   if (type === "image") {
     const bitmap = data.getBitmap();
@@ -181,6 +181,61 @@ function ReadImageFile(filePath) {
   return fs.readFileSync(filePath);
 }
 
+async function OcrImage(image, ak, sk) {
+  return await ocr(image, ak, sk);
+}
+
+async function ocr(image, ak, sk) {
+  var options = {
+    method: "POST",
+    url:
+      "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic?access_token=" +
+      (await getAccessToken(ak, sk)),
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    data: {
+      detect_direction: "false",
+      paragraph: "false",
+      probability: "false",
+      multidirectional_recognize: "false",
+      image: image,
+    },
+  };
+
+  // 返回新的 Promise
+  return new Promise((resolve, reject) => {
+    axios(options)
+      .then((response) => {
+        resolve(response.data?.words_result || []);
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+}
+
+function getAccessToken(ak, sk) {
+  let options = {
+    method: "POST",
+    url:
+      "https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=" +
+      ak +
+      "&client_secret=" +
+      sk,
+  };
+  return new Promise((resolve, reject) => {
+    axios(options)
+      .then((res) => {
+        resolve(res.data.access_token);
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+}
+
 // 修改 window.preload 对象
 window.preload = {
   dbStorage: new DBStorage(),
@@ -200,4 +255,6 @@ window.preload = {
   ReadImageFile,
 
   Buffer,
+
+  OcrImage,
 };

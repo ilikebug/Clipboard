@@ -14,6 +14,8 @@ const {
   SaveFile,
   DeleteFile,
   ReadImageFile,
+
+  OcrImage,
 } = window.preload;
 
 const HISTORY_SORT_ID_LIST = "HISTORY_SORT_ID_LIST";
@@ -26,6 +28,8 @@ const SETTINGS_SECTION = "settings";
 const defaultSettingsConfig = {
   maxHistoryCount: 100,
   pasteToSystem: true,
+  ocrAk: "",
+  ocrSk: "",
 };
 
 let historySortIDList = [];
@@ -158,6 +162,49 @@ class RegisterEvent {
         showToast("收藏成功");
       });
     });
+
+    historyElement.querySelectorAll(".ocr-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const historyID = e.target.getAttribute("history-id");
+        if (historyListDataMap[historyID].type === "image") {
+          if (
+            !settings.get().ocrAk ||
+            !settings.get().ocrSk ||
+            settings.get().ocrAk == "" ||
+            settings.get().ocrSk == ""
+          ) {
+            showToast("请先设置OCR App Key和Secret Key");
+            return;
+          }
+          const image = ReadImageFile(historyListDataMap[historyID].content);
+          OcrImage(
+            image.toString("base64"),
+            settings.get().ocrAk,
+            settings.get().ocrSk
+          ).then((result) => {
+            console.log(result);
+            if (result.length == 0) {
+              showToast("OCR 失败");
+              return;
+            }
+            let text = "";
+            for (const item of result) {
+              text += item.words + "\n";
+            }
+            historyList.addContentToHistoryList({
+              id: GenerateMD5Hash(text),
+              content: text,
+              type: "text",
+            });
+            historyList.renderHistoryList();
+            showToast("OCR 成功, 已添加到历史记录");
+          });
+        } else {
+          showToast("当前内容不是图片");
+        }
+      });
+    });
   }
 
   registerSidebarEvent() {
@@ -181,7 +228,9 @@ class RegisterEvent {
     document.getElementById("saveSettings").addEventListener("click", () => {
       const maxHistoryCount = document.getElementById("maxHistoryCount").value;
       const pasteToSystem = document.getElementById("pasteToSystem").checked;
-      settings.set({ maxHistoryCount, pasteToSystem });
+      const ocrAk = document.getElementById("ocrAk").value;
+      const ocrSk = document.getElementById("ocrSk").value;
+      settings.set({ maxHistoryCount, pasteToSystem, ocrAk, ocrSk });
       showToast("设置保存成功");
     });
 
@@ -284,6 +333,48 @@ class RegisterEvent {
         }
       });
     });
+
+    favoritesElement.querySelectorAll(".ocr-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const favoritesID = e.target.getAttribute("favorites-id");
+        if (favoritesListDataMap[favoritesID].type === "image") {
+          if (
+            !settings.get().ocrAk ||
+            !settings.get().ocrSk ||
+            settings.get().ocrAk == "" ||
+            settings.get().ocrSk == ""
+          ) {
+            showToast("请先设置OCR App Key和Secret Key");
+            return;
+          }
+          const image = ReadImageFile(
+            favoritesListDataMap[favoritesID].content
+          );
+          OcrImage(
+            image.toString("base64"),
+            settings.get().ocrAk,
+            settings.get().ocrSk
+          ).then((result) => {
+            if (result.length == 0) {
+              showToast("OCR 失败");
+              return;
+            }
+            let text = "";
+            for (const item of result) {
+              text += item.words + "\n";
+            }
+            historyList.addContentToHistoryList({
+              id: GenerateMD5Hash(text),
+              content: text,
+              type: "text",
+            });
+            historyList.renderHistoryList();
+            showToast("OCR 成功, 已添加到历史记录");
+          });
+        }
+      });
+    });
   }
 
   registerFavoritesEvent() {
@@ -314,7 +405,7 @@ class RegisterEvent {
 
   registerSearchEvent() {
     const searchInput = document.getElementById("search");
-    
+
     // 搜索输入事件
     searchInput.addEventListener(
       "input",
@@ -326,10 +417,13 @@ class RegisterEvent {
     );
 
     // 搜索框失去焦点时的处理
-    searchInput.addEventListener('blur', (e) => {
+    searchInput.addEventListener("blur", (e) => {
       // 如果不是点击了列表项,就保持焦点在搜索框
       const activeElement = document.activeElement;
-      if (!activeElement.closest('.history-item') && !activeElement.closest('.favorite-item')) {
+      if (
+        !activeElement.closest(".history-item") &&
+        !activeElement.closest(".favorite-item")
+      ) {
         e.target.focus();
       }
     });
@@ -338,7 +432,12 @@ class RegisterEvent {
   // 添加处理键盘事件的新方法
   handleKeyDown(event) {
     // 如果是可输入字符且不是功能键
-    if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    if (
+      event.key.length === 1 &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
       const searchInput = document.getElementById("search");
       // 如果搜索框可见
       if (searchInput.style.display !== "none") {
@@ -550,6 +649,7 @@ class HistoryList {
             <button class="copy-btn" history-id="${historyID}">复制</button>
             <button class="export-btn" history-id="${historyID}">导出</button>
             <button class="favorite-btn" history-id="${historyID}">收藏</button>
+            <button class="ocr-btn" history-id="${historyID}">OCR</button>
             <span class="timestamp">${new Date(historyItem.timestamp).toLocaleString()}</span>
           </div>
         `;
@@ -659,6 +759,7 @@ class FavoritesList {
             <button class="remove-favorite-btn" favorites-id="${favoritesID}">取消收藏</button>
             <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
             <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
+            <button class="ocr-btn" favorites-id="${favoritesID}">OCR</button>
             <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
           </div>
         `;
@@ -755,6 +856,7 @@ class FavoritesList {
   clearFavoritesList() {
     for (const favoritesID of favoritesSortIDList) {
       if (
+        favoritesListDataMap[favoritesID] != null &&
         favoritesListDataMap[favoritesID].type === "image" &&
         historyListDataMap[favoritesID] == null
       ) {
