@@ -584,15 +584,19 @@ class HistoryList {
       if (historyListDataMap[historyID] == null) {
         if (historySortIDList.length >= maxHistoryCount) {
           const deleteID = historySortIDList.pop();
+          // 只有当该项不在收藏列表中时才删除文件
           if (
             historyListDataMap[deleteID].type === "image" &&
-            favoritesListDataMap[deleteID] == null
+            !favoritesSortIDList.includes(deleteID)
           ) {
             DeleteFile(historyListDataMap[deleteID].content);
           }
           dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
           delete historyListDataMap[deleteID];
-          dbStorage.removeData(deleteID);
+          // 只有当该项不在收藏列表中时才从数据库中删除
+          if (!favoritesSortIDList.includes(deleteID)) {
+            dbStorage.removeData(deleteID);
+          }
         }
         historySortIDList.unshift(historyID);
         dbStorage.setData(HISTORY_SORT_ID_LIST, historySortIDList);
@@ -721,39 +725,64 @@ class FavoritesList {
     if (favoritesSortIDList == null) {
       favoritesSortIDList = [];
     }
-    for (const id of favoritesSortIDList) {
-      favoritesListDataMap[id] = dbStorage.getData(id);
-    }
+    // 过滤掉无效的ID并保存有效数据
+    favoritesSortIDList = favoritesSortIDList.filter(id => {
+      const data = dbStorage.getData(id);
+      if (data && data.content) {
+        favoritesListDataMap[id] = data;
+        return true;
+      }
+      return false;
+    });
+    // 更新存储的ID列表
+    dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
   }
 
   addContentToFavoritesList(clipboardData) {
+    if (!clipboardData || !clipboardData.id || !clipboardData.content) {
+      console.error('Invalid clipboard data:', clipboardData);
+      return false;
+    }
+
     let favoritesID = clipboardData.id;
     if (favoritesListDataMap[favoritesID] == null) {
       favoritesSortIDList.unshift(favoritesID);
       dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
-      favoritesListDataMap[favoritesID] = {
+      
+      const favoriteItem = {
         id: favoritesID,
         content: clipboardData.content,
-        type: clipboardData.type,
-        tags: clipboardData.tags,
+        type: clipboardData.type || 'text',
+        tags: clipboardData.tags || [],
         timestamp: Date.now(),
       };
-      dbStorage.setData(favoritesID, favoritesListDataMap[favoritesID]);
+      
+      favoritesListDataMap[favoritesID] = favoriteItem;
+      dbStorage.setData(favoritesID, favoriteItem);
+      return true;
     }
+    return false;
   }
 
   cancelFavorite(favoritesID) {
     const index = favoritesSortIDList.findIndex((id) => id == favoritesID);
+    if (index === -1) return;
+
+    // 只有当该项不在历史记录中时才删除文件
     if (
       favoritesListDataMap[favoritesID].type === "image" &&
-      historyListDataMap[favoritesID] == null
+      !historySortIDList.includes(favoritesID)
     ) {
       DeleteFile(favoritesListDataMap[favoritesID].content);
     }
+    
     favoritesSortIDList.splice(index, 1);
     dbStorage.setData(FAVORITES_SORT_ID_LIST, favoritesSortIDList);
     delete favoritesListDataMap[favoritesID];
-    dbStorage.removeData(favoritesID);
+    // 只有当该项不在历史记录中时才从数据库中删除
+    if (!historySortIDList.includes(favoritesID)) {
+      dbStorage.removeData(favoritesID);
+    }
     this.renderFavoritesList();
   }
 
