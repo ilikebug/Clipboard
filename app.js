@@ -252,6 +252,7 @@ class ImageLoader {
 
     // 如果已经在加载中，避免重复处理
     if (this.loadingImages.has(imgElement.id)) {
+      console.log('图片已在加载中，跳过:', imgElement.id);
       return;
     }
 
@@ -264,76 +265,134 @@ class ImageLoader {
     const spinner = container.querySelector('.loading-spinner');
     const errorMsg = container.querySelector('.error-message');
     
+    // 存储初始状态
+    const initialState = {
+      container,
+      element: imgElement,
+      spinner,
+      errorMsg,
+      id: imgElement.id
+    };
+    
     // 确保加载状态正确
     if (spinner) spinner.style.display = 'block';
     if (errorMsg) errorMsg.style.display = 'none';
     if (imgElement) imgElement.style.display = 'none';
     
-    this.loadingImages.set(imgElement.id, {
-      element: imgElement,
-      spinner,
-      errorMsg
-    });
+    this.loadingImages.set(imgElement.id, initialState);
 
     // 获取原始图片路径
     const originalSrc = imgElement.getAttribute('src');
-    console.log('开始加载图片:', originalSrc);
+    console.log('开始加载图片，原始路径:', originalSrc);
 
-    // 预加载图片
-    const tempImage = new Image();
+    // 检查文件是否存在
+    try {
+      const normalizedPath = this.normalizeImagePath(originalSrc);
+      console.log('规范化后的路径:', normalizedPath);
+      
+      // 移除 file:// 前缀以检查文件
+      const actualPath = decodeURIComponent(normalizedPath.replace(/^file:\/\//g, ''));
+      console.log('实际文件路径:', actualPath);
+      
+      // 使用 preload 中的方法检查文件
+      const imageData = window.preload.ReadImageFile(normalizedPath);
+      if (!imageData) {
+        throw new Error('图片文件不存在或无法读取');
+      }
+
+      // 预加载图片
+      const tempImage = new Image();
+      
+      tempImage.onload = () => {
+        console.log('图片加载成功:', normalizedPath);
+        
+        // 获取最新的状态
+        const currentState = this.loadingImages.get(imgElement.id);
+        if (!currentState) {
+          console.log('找不到图片加载状态，可能已被清理');
+          return;
+        }
+
+        // 检查元素是否仍然存在于文档中
+        if (!document.body.contains(currentState.container)) {
+          console.log('图片容器已不在文档中');
+          this.loadingImages.delete(imgElement.id);
+          return;
+        }
+
+        // 重新获取所有元素（以防它们被替换）
+        const container = document.getElementById(currentState.container.id);
+        const element = document.getElementById(currentState.id);
+        const spinner = container ? container.querySelector('.loading-spinner') : null;
+        const errorMsg = container ? container.querySelector('.error-message') : null;
+
+        // 安全地更新 UI
+        if (spinner && spinner.style) {
+          spinner.style.display = 'none';
+        }
+        
+        if (errorMsg && errorMsg.style) {
+          errorMsg.style.display = 'none';
+        }
+        
+        if (element && element.style) {
+          element.style.display = 'block';
+          element.src = normalizedPath;
+          element.classList.add('loaded');
+          element.style.opacity = '1';
+        } else {
+          console.log('图片元素不存在或无效');
+        }
+        
+        this.loadingImages.delete(imgElement.id);
+      };
+
+      tempImage.onerror = (error) => {
+        console.error('图片加载失败:', normalizedPath, error);
+        this.handleImageError(imgElement.id, '图片加载失败');
+      };
+
+      // 开始加载图片
+      tempImage.src = normalizedPath;
+      
+    } catch (error) {
+      console.error('处理图片时发生错误:', error);
+      this.handleImageError(imgElement.id, '无法加载图片: ' + error.message);
+    }
+  }
+
+  handleImageError(imageId, errorMessage) {
+    const currentState = this.loadingImages.get(imageId);
+    if (!currentState) return;
+
+    // 检查元素是否仍然存在于文档中
+    if (!document.body.contains(currentState.container)) {
+      console.log('图片容器已不在文档中');
+      this.loadingImages.delete(imageId);
+      return;
+    }
+
+    // 重新获取所有元素
+    const container = document.getElementById(currentState.container.id);
+    const element = document.getElementById(currentState.id);
+    const spinner = container ? container.querySelector('.loading-spinner') : null;
+    const errorMsg = container ? container.querySelector('.error-message') : null;
+
+    // 安全地更新 UI
+    if (spinner && spinner.style) {
+      spinner.style.display = 'none';
+    }
     
-    tempImage.onload = () => {
-      console.log('图片加载成功:', originalSrc);
-      const imageData = this.loadingImages.get(imgElement.id);
-      if (!imageData) return;
-
-      const { element, spinner, errorMsg } = imageData;
-      
-      // 确保所有元素都存在并且有效
-      if (spinner && spinner.style) {
-        spinner.style.display = 'none';
-      }
-      
-      if (errorMsg && errorMsg.style) {
-        errorMsg.style.display = 'none';
-      }
-      
-      if (element && element.style) {
-        element.style.display = 'block';
-        element.src = tempImage.src;
-        element.classList.add('loaded');
-        element.style.opacity = '1';
-      }
-      
-      this.loadingImages.delete(imgElement.id);
-    };
-
-    tempImage.onerror = (error) => {
-      console.error('图片加载失败:', originalSrc, error);
-      const imageData = this.loadingImages.get(imgElement.id);
-      if (!imageData) return;
-
-      const { element, spinner, errorMsg } = imageData;
-      
-      if (spinner && spinner.style) {
-        spinner.style.display = 'none';
-      }
-      
-      if (errorMsg && errorMsg.style) {
-        errorMsg.style.display = 'block';
-        errorMsg.textContent = '无法加载图片';
-      }
-      
-      if (element && element.style) {
-        element.style.display = 'none';
-      }
-      
-      this.loadingImages.delete(imgElement.id);
-    };
-
-    // 保存原始路径并开始加载
-    imgElement.setAttribute('data-original-src', originalSrc);
-    tempImage.src = this.normalizeImagePath(originalSrc);
+    if (errorMsg && errorMsg.style) {
+      errorMsg.style.display = 'block';
+      errorMsg.textContent = errorMessage;
+    }
+    
+    if (element && element.style) {
+      element.style.display = 'none';
+    }
+    
+    this.loadingImages.delete(imageId);
   }
 
   normalizeImagePath(path) {
