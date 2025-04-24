@@ -66,15 +66,18 @@ let contentTools = null;
 class ContentTools {
   renderContent(item) {
     if (item.type === "image") {
+      // 确保图片路径使用 file:// 协议
+      const imagePath = item.content.startsWith('file://') ? item.content : `file://${item.content}`;
       return `
         <div class="image-container">
           <div class="loading-spinner"></div>
-          <img src="${item.content}" 
+          <img src="${imagePath}" 
+               class="lozad"
                alt="Clipboard image" 
-               style="max-width: 100%; max-height: 100px; display: none;" 
-               onload="this.style.display='inline'; this.previousElementSibling.style.display='none';"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-          <p style="display: none;">无法加载图片</p>
+               style="max-width: 100%; max-height: 100px; display: none;"
+               onload="this.style.display='block'; this.classList.add('loaded'); this.previousElementSibling.style.display='none';"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+          <p style="display: none; text-align: center; color: #999;">无法加载图片</p>
         </div>
       `;
     }

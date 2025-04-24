@@ -36,46 +36,84 @@ async function CheckSystemClipboard(callback) {
   let lastTextID = "";
   let lastImageID = "";
   let isProcessing = false;
-  let clipboardQueue = []; // 添加队列来存储剪贴板变化
+  let clipboardQueue = [];
+  let isConsumerRunning = false;
 
+  // 生产者：检查剪贴板并将内容加入队列
   const checkClipboard = async () => {
-    if (isProcessing) return;
-    isProcessing = true;
-
     try {
       const text = clipboard.readText();
       const image = clipboard.readImage();
 
       // 检查文本
-      const textID = GenerateMD5Hash(text, "text");
-      if (text !== "" && textID !== lastTextID) {
-        lastTextID = textID;
-        clipboardQueue.push({ type: "text", content: text, id: textID });
+      if (text !== "") {
+        const textID = GenerateMD5Hash(text, "text");
+        if (textID !== lastTextID) {
+          lastTextID = textID;
+          clipboardQueue.push({ type: "text", content: text, id: textID });
+          console.log('添加文本到队列:', textID);
+        }
       }
 
       // 检查图片
-      const imageID = GenerateMD5Hash(image, "image");
-      if (!image.isEmpty() && imageID !== lastImageID) {
-        lastImageID = imageID;
-        const filePath = SaveFile(
-          image.toPNG(),
-          `clipboard_image_${imageID}.png`
-        );
-        clipboardQueue.push({ type: "image", content: filePath, id: imageID });
+      if (!image.isEmpty()) {
+        const imageID = GenerateMD5Hash(image, "image");
+        if (imageID !== lastImageID) {
+          lastImageID = imageID;
+          const filePath = SaveFile(
+            image.toPNG(),
+            `clipboard_image_${imageID}.png`
+          );
+          if (filePath) {
+            clipboardQueue.push({ type: "image", content: filePath, id: imageID });
+            console.log('添加图片到队列:', imageID);
+          }
+        }
       }
+    } catch (error) {
+      console.error('检查剪贴板出错:', error);
+    }
+  };
 
-      // 处理队列中的所有项
-      while (clipboardQueue.length > 0) {
-        const item = clipboardQueue.shift();
+  // 消费者：处理队列中的内容
+  const processQueue = async () => {
+    if (isProcessing || clipboardQueue.length === 0) return;
+    
+    isProcessing = true;
+    try {
+      const item = clipboardQueue.shift();
+      if (item) {
+        console.log('处理队列项:', item.id);
         await callback(item);
       }
+    } catch (error) {
+      console.error('处理队列项出错:', error);
     } finally {
       isProcessing = false;
     }
   };
 
-  // 使用更短的检查间隔，确保能捕获到快速的变化
-  setInterval(checkClipboard, 20); // 每20ms检查一次
+  // 启动消费者循环
+  const startConsumer = () => {
+    if (isConsumerRunning) return;
+    
+    isConsumerRunning = true;
+    const consumeLoop = async () => {
+      if (!isConsumerRunning) return;
+      
+      await processQueue();
+      // 使用 setTimeout 来避免阻塞
+      setTimeout(consumeLoop, 50);
+    };
+    
+    consumeLoop();
+  };
+
+  // 启动生产者（剪贴板检查）
+  setInterval(checkClipboard, 100);
+  
+  // 启动消费者
+  startConsumer();
 }
 
 // 设置数据到系统剪贴板
@@ -159,7 +197,9 @@ function SaveFile(content, fileName) {
 
     const filePath = path.join(storageDir, fileName);
     fs.writeFileSync(filePath, content);
-    return filePath;
+    
+    // 返回相对路径，使用 file:// 协议
+    return `file://${filePath}`;
   } catch (error) {
     console.error("存储文件失败:", error);
     return null;

@@ -636,3 +636,72 @@ button:hover {
   animation: flash 0.3s;
 }
 
+/* 优化图片加载相关样式 */
+.image-container {
+  position: relative;
+  width: 100%;
+  min-height: 100px;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.image-container img {
+  max-width: 100%;
+  max-height: 100px;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  display: none; /* 初始状态隐藏 */
+}
+
+.image-container img.loaded {
+  opacity: 1;
+  display: block; /* 加载完成后显示 */
+}
+
+.loading-spinner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #4a90e2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  z-index: 1;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.image-container p {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 10px;
+  margin: 0;
+  z-index: 1;
+}
+
+/* 优化内容区域滚动性能 */
+.content-section {
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 优化图片渲染性能 */
+.history-item .content img, .favorite-item .content img {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+

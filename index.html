@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="styles.css">
   <!-- 添加 Font Awesome 库 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <!-- 添加图片延迟加载库 -->
+  <script src="https://cdn.jsdelivr.net/npm/lozad/dist/lozad.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -67,6 +69,17 @@
       </main>
     </div>
   </div>
+  <script>
+    // 初始化图片延迟加载
+    document.addEventListener('DOMContentLoaded', function() {
+      const observer = lozad('.lozad', {
+        loaded: function(el) {
+          el.classList.add('loaded');
+        }
+      });
+      observer.observe();
+    });
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
