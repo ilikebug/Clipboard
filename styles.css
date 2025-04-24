@@ -1,13 +1,136 @@
+:root {
+  /* 主题颜色变量 */
+  --primary-color: #4a90e2;
+  --secondary-color: #5a5de8;
+  --background-color: #ffffff;
+  --text-color: #333333;
+  --border-color: #e0e0e0;
+  --hover-color: #f5f5f5;
+  --active-color: #e8e8e8;
+  --header-bg: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  --sidebar-bg: #f0f4f8;
+  --card-bg: #ffffff;
+  --card-border: rgba(0, 0, 0, 0.05);
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --content-bg: #f8f9fa;
+  --content-border: #e9ecef;
+  --timestamp-color: #888;
+  --modal-bg: rgba(0, 0, 0, 0.5);
+  --toast-bg: rgba(0, 0, 0, 0.7);
+}
+
+/* 深色主题 */
+[data-theme="dark"] {
+  --primary-color: #4a90e2;
+  --secondary-color: #5a5de8;
+  --background-color: #1a1a1a;
+  --text-color: #ffffff;
+  --border-color: #333333;
+  --hover-color: #2a2a2a;
+  --active-color: #3a3a3a;
+  --sidebar-bg: #2c2c2c;
+  --card-bg: #2c2c2c;
+  --card-border: rgba(255, 255, 255, 0.1);
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  --content-bg: #363636;
+  --content-border: #404040;
+  --timestamp-color: #aaa;
+  --modal-bg: rgba(0, 0, 0, 0.7);
+  --toast-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* 经典主题 */
+[data-theme-preset="classic"] {
+  --primary-color: #4a90e2;
+  --secondary-color: #5a5de8;
+}
+
+/* 现代主题 */
+[data-theme-preset="modern"] {
+  --primary-color: #00bcd4;
+  --secondary-color: #ff4081;
+}
+
+/* 主题设置样式 */
+.settings-group {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--card-bg);
+}
+
+.settings-group h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--text-color);
+}
+
+.color-picker-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.color-picker-group label {
+  margin-right: 10px;
+  min-width: 100px;
+}
+
+input[type="color"] {
+  width: 50px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* 应用主题颜色 */
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+}
+
+.sidebar-btn {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  border: 1px solid var(--card-border);
+  padding: 12px 20px;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  margin: 0 12px 8px;
+  border-radius: 12px;
+  transition: all var(--transition-speed) var(--transition-timing);
+}
+
+.sidebar-btn:hover {
+  background-color: var(--hover-color);
+  transform: translateX(4px);
+}
+
+.sidebar-btn.active {
+  background-color: var(--active-color);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
 body, html {
-  margin: 0;
-  padding: 0; /* 改为具体的值 */
   height: 100%;
-  width: 100%; /* 添加这一行 */
+  width: 100%;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  background-color: #f0f4f8; /* 添加这一行确保背景色 */
-  position: relative; /* 添加这一行 */
-  box-sizing: border-box; /* 添加这一行 */
+  background-color: var(--background-color);
+  position: relative;
+  box-sizing: border-box;
 }
 
 /* 确保所有元素都使用 border-box */
@@ -26,16 +149,18 @@ body, html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #f0f4f8;
+  background-color: var(--background-color);
 }
 
 #sidebar {
-  width: 240px;
-  background: linear-gradient(to right, #e6e9f0 0%, #f5f7fa 100%);
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  width: 280px;
+  background: var(--sidebar-bg);
+  box-shadow: var(--card-shadow);
   padding: 20px 0;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 2;
 }
 
 .app-title {
@@ -44,20 +169,17 @@ body, html {
   padding: 15px 20px;
   margin-bottom: 20px;
   font-size: 18px;
-  color: #4a90e2;
+  color: var(--primary-color);
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background-color: rgba(255, 255, 255, 0.7);
+  background-color: var(--card-bg);
   border-radius: 0 20px 20px 0;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
 }
 
 .app-title .logo {
-  width: 24px; /* 调整 logo 大小 */
+  width: 24px;
   height: 24px;
-  margin-right: 10px;
+  margin-right: 12px;
 }
 
 .app-title span {
@@ -66,43 +188,13 @@ body, html {
   text-overflow: ellipsis;
 }
 
-/* 修改侧边栏按钮样式 */
-.sidebar-btn {
-  background-color: rgba(255, 255, 255, 0.5);
-  color: #333;
-  border: none;
-  padding: 10px 15px;
-  text-align: left;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-left: 4px solid transparent;
-  display: flex;
-  align-items: center;
-  margin: 0 10px 10px;
-  border-radius: 0 20px 20px 0;
-  width: calc(100% - 20px);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-
-.sidebar-btn:hover, .sidebar-btn.active {
-  background-color: rgba(255, 255, 255, 0.8);
-  border-left-color: #4a90e2;
-  transform: translateX(5px);
-}
-
-.sidebar-btn.active {
-  color: #4a90e2;
-  font-weight: bold;
-}
-
 /* 添加新的样式来控制侧边栏按钮容器 */
 #sidebar-buttons {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  align-items: stretch; /* 使按钮填满容器宽度 */
-  padding: 0 0 20px 0; /* 在底部添加内边距 */
+  align-items: stretch;
+  padding: 0 0 20px 0;
   width: 100%;
 }
 
@@ -111,17 +203,18 @@ body, html {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background-color: var(--background-color);
 }
 
 header {
-  background: linear-gradient(135deg, #4a90e2, #5a5de8);
+  background: var(--header-bg);
   color: white;
-  padding: 10px 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 16px 24px;
+  box-shadow: var(--card-shadow);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+  z-index: 1;
 }
 
 h1 {
@@ -134,16 +227,15 @@ h1 {
 
 #search {
   flex-grow: 1;
-  margin: 0 20px;
-  padding: 8px 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 0 24px;
+  padding: 10px 20px;
+  border: none;
   border-radius: 24px;
   font-size: 16px;
   background-color: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(5px);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   color: white;
-  transition: background-color 0.3s;
+  backdrop-filter: blur(8px);
+  transition: all var(--transition-speed) var(--transition-timing);
 }
 
 #search::placeholder {
@@ -152,8 +244,8 @@ h1 {
 
 #search:focus {
   outline: none;
-  background-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
 
 #clearHistory {
@@ -180,34 +272,34 @@ main {
 }
 
 .history-item, .favorite-item {
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 15px;
-  padding: 15px;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  transition: all var(--transition-speed) var(--transition-timing);
 }
 
 .history-item:hover, .favorite-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 .history-item .content, .favorite-item .content {
   margin-bottom: 15px;
   padding: 10px;
-  background-color: #f8f9fa;
+  background-color: var(--content-bg);
+  border-color: var(--content-border);
   border-radius: 8px;
-  border: 1px solid #e9ecef;
-  max-height: 100px; /* 限制内容高度 */
-  overflow: hidden; /* 隐藏超出部分 */
-  position: relative; /* 为悬停效果做准备 */
-  transition: max-height 0.3s ease; /* 添加过渡效果 */
+  max-height: 100px;
+  overflow: hidden;
+  position: relative;
+  transition: max-height 0.3s ease;
 }
 
 .history-item .content:hover, .favorite-item .content:hover {
-  max-height: none; /* 鼠标悬停时取消高度限制 */
+  max-height: none;
 }
 
 .history-item .content::after, .favorite-item .content::after {
@@ -216,11 +308,11 @@ main {
   bottom: 0;
   right: 0;
   padding: 0 5px;
-  background-color: #f8f9fa;
+  background-color: var(--content-bg);
 }
 
 .history-item .content:hover::after, .favorite-item .content:hover::after {
-  display: none; /* 鼠标悬停时隐藏省略号 */
+  display: none;
 }
 
 .history-item .content pre, .favorite-item .content pre {
@@ -248,30 +340,27 @@ main {
 
 .history-item .timestamp, .favorite-item .timestamp {
   font-size: 11px;
-  color: #888;
+  color: var(--timestamp-color);
   margin-left: auto;
   margin-top: 10px;
 }
 
 button {
-  background-color: #4a90e2;
+  background-color: var(--primary-color);
   color: white;
   border: none;
-  padding: 4px 10px;
+  padding: 8px 16px;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  margin-right: 15px;
-  margin-bottom: 8px;
+  transition: all var(--transition-speed) var(--transition-timing);
 }
 
 button:hover {
-  background-color: #5a9eef;
   transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  filter: brightness(1.1);
 }
 
 #settings.content-section {
@@ -282,9 +371,9 @@ button:hover {
 
 #settings h2 {
   font-size: 24px;
-  color: #333;
+  color: var(--text-color);
   margin-bottom: 20px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--border-color);
   padding-bottom: 10px;
 }
 
@@ -303,16 +392,18 @@ button:hover {
 
 .setting-item label {
   font-weight: 500;
-  color: #555;
+  color: var(--text-color);
   flex: 1;
 }
 
 .setting-item input[type="number"] {
   width: 80px;
   padding: 5px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
+  background-color: var(--card-bg);
+  color: var(--text-color);
 }
 
 .setting-item input[type="checkbox"] {
@@ -366,42 +457,42 @@ button:hover {
 }
 
 .favorite-item {
-  background-color: #fff8e1; /* 淡黄色背景 */
-  border: 1px solid #ffe082; /* 稍深的黄色边框 */
+  background-color: #fff8e1;
+  border: 1px solid #ffe082;
 }
 
 .favorite-item:hover {
-  background-color: #ffecb3; /* 悬停时稍深一点的黄色 */
+  background-color: #ffecb3;
   box-shadow: 0 8px 15px rgba(255, 193, 7, 0.1), 0 2px 4px rgba(255, 193, 7, 0.08);
 }
 
 .remove-favorite-btn {
-  background-color: #ffa000; /* 橙黄色按钮 */
+  background-color: #ffa000;
 }
 
 .remove-favorite-btn:hover {
-  background-color: #ff8f00; /* 悬停时稍深的橙黄色 */
+  background-color: #ff8f00;
 }
 
 .history-item {
-  background-color: #ffffff;
+  background-color: var(--card-bg);
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--card-shadow);
   margin-bottom: 15px;
   padding: 15px;
   transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--card-border);
 }
 
 .history-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
-  background-color: #f8f9fa; /* 添加这一行，使背景色在悬停时变深一点 */
+  background-color: var(--hover-color);
 }
 
 /* 为了保持收藏项的黄色背景，我们需要单独设置其悬停效果 */
 .favorite-item:hover {
-  background-color: #ffecb3; /* 保持收藏项的黄色背景，但比正常状态稍深 */
+  background-color: #ffecb3;
   box-shadow: 0 8px 15px rgba(255, 193, 7, 0.1), 0 2px 4px rgba(255, 193, 7, 0.08);
 }
 
@@ -445,13 +536,20 @@ button:hover {
 
 .tag {
   display: inline-block;
-  background-color: #e0e0e0;
-  color: #333;
-  padding: 2px 8px;
-  border-radius: 12px;
+  background-color: var(--hover-color);
+  color: var(--text-color);
+  padding: 4px 12px;
+  border-radius: 16px;
   font-size: 12px;
-  margin-right: 5px;
-  margin-bottom: 5px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-speed) var(--transition-timing);
+}
+
+.tag:hover {
+  background-color: var(--active-color);
+  border-color: var(--primary-color);
 }
 
 /* 修改按钮样式，使其更紧凑 */
@@ -463,15 +561,15 @@ button:hover {
 
 /* 在文件末尾添加以下样式 */
 .history-item.selected {
-  background-color: #e6f2ff; /* 浅蓝色背景 */
-  border: 2px solid #4a90e2; /* 蓝色边框 */
-  box-shadow: 0 0 5px rgba(74, 144, 226, 0.5); /* 轻微的蓝色阴影 */
+  background-color: #e6f2ff;
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
 }
 
 .favorite-item.selected {
-  background-color: #fff2e6; /* 浅橙色背景 */
-  border: 2px solid #ffa000; /* 橙色边框 */
-  box-shadow: 0 0 5px rgba(255, 160, 0, 0.5); /* 轻微的橙色阴影 */
+  background-color: #fff2e6;
+  border: 2px solid #ffa000;
+  box-shadow: 0 0 5px rgba(255, 160, 0, 0.5);
 }
 
 /* 在文件末尾添加以下样式 */
@@ -509,46 +607,46 @@ button:hover {
 
 /* 修改删除按钮的样式 */
 .history-item .remove-btn {
-  background-color: #ff4757; /* 红色背景 */
+  background-color: #ff4757;
   color: white;
 }
 
 .history-item .remove-btn:hover {
-  background-color: #ff6b81; /* 悬停时稍浅的红色 */
+  background-color: #ff6b81;
 }
 
 .link-mention {
-  color: #4a90e2;
+  color: var(--primary-color);
   text-decoration: none;
-  border-bottom: 1px dotted #4a90e2;
+  border-bottom: 1px dotted var(--primary-color);
   cursor: pointer;
   transition: color 0.3s;
 }
 
 .link-mention:hover {
-  color: #5a9eef;
-  border-bottom: 1px solid #5a9eef;
+  color: var(--secondary-color);
+  border-bottom: 1px solid var(--secondary-color);
 }
 
 #memory-usage {
   margin-top: auto;
   padding: 10px 20px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-color);
   background-color: rgba(255, 255, 255, 0.5);
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-color);
   display: flex;
-  flex-direction: column; /* 改为列方向 */
-  align-items: flex-start; /* 左对齐 */
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 #memory-usage i {
-  margin-bottom: 5px; /* 调整图标与文本的间距 */
-  color: #4a90e2;
+  margin-bottom: 5px;
+  color: var(--primary-color);
 }
 
 .memory-info-line {
-  margin-bottom: 5px; /* 每行之间的间距 */
+  margin-bottom: 5px;
 }
 
 .modal {
@@ -557,17 +655,20 @@ button:hover {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--modal-bg);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(8px);
 }
 .modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  background-color: var(--card-bg);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  max-width: 90%;
+  width: 480px;
 }
 .modal-actions {
   margin-top: 20px;
@@ -580,18 +681,24 @@ button:hover {
   width: 100%;
   padding: 5px;
   margin-top: 10px;
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
 }
 .toast {
   position: fixed;
-  bottom: 20px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--toast-bg);
   color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
   opacity: 0;
-  transition: opacity 0.3s ease-in-out;
+  transition: opacity var(--transition-speed) var(--transition-timing);
 }
 .toast.show {
   opacity: 1;
@@ -600,7 +707,7 @@ button:hover {
 /* 添加到文件末尾 */
 
 .sidebar-btn.focused {
-  background-color: #4a90e2;
+  background-color: var(--primary-color);
   color: white;
   transform: translateX(5px);
 }
@@ -608,26 +715,26 @@ button:hover {
 .history-item.selected,
 .favorite-item.selected {
   background-color: #e6f2ff;
-  border: 2px solid #4a90e2;
+  border: 2px solid var(--primary-color);
   box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
 }
 
 /* 确保列表项有足够的内边距，以便在选中时不会因为边框而改变大小 */
 .history-item,
 .favorite-item {
-  padding: 13px; /* 原来的 15px 减去 2px 边框 */
+  padding: 13px;
 }
 
 @keyframes flash {
   0% { background-color: #e6f2ff; }
-  50% { background-color: #4a90e2; }
+  50% { background-color: var(--primary-color); }
   100% { background-color: #e6f2ff; }
 }
 
 .history-item.selected,
 .favorite-item.selected {
   background-color: #e6f2ff;
-  border: 2px solid #4a90e2;
+  border: 2px solid var(--primary-color);
   box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
 }
 
@@ -656,12 +763,11 @@ button:hover {
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.3s ease;
-  display: none; /* 初始状态隐藏 */
+  display: block;
 }
 
 .image-container img.loaded {
   opacity: 1;
-  display: block; /* 加载完成后显示 */
 }
 
 .loading-spinner {
@@ -669,7 +775,7 @@ button:hover {
   width: 24px;
   height: 24px;
   border: 2px solid #f3f3f3;
-  border-top: 2px solid #4a90e2;
+  border-top: 2px solid var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   z-index: 1;
@@ -703,5 +809,57 @@ button:hover {
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  #sidebar {
+    width: 240px;
+  }
+  
+  .app-title {
+    font-size: 16px;
+  }
+  
+  header {
+    padding: 12px 16px;
+  }
+  
+  #search {
+    margin: 0 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  #sidebar {
+    width: 200px;
+  }
+  
+  .sidebar-btn {
+    padding: 8px 16px;
+  }
+  
+  .history-item, .favorite-item {
+    padding: 12px;
+  }
 }
 

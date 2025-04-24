@@ -62,25 +62,355 @@ class Settings {
   }
 }
 
-let contentTools = null;
+class ThemeManager {
+  constructor() {
+    this.defaultConfig = {
+      mode: 'light',
+      preset: 'classic',
+      customColors: {
+        primary: '#4a90e2',
+        secondary: '#5a5de8'
+      }
+    };
+
+    // 预设主题配置
+    this.presets = {
+      classic: {
+        light: {
+          primary: '#4a90e2',
+          secondary: '#5a5de8',
+          background: '#ffffff',
+          text: '#333333',
+          border: '#e0e0e0',
+          hover: '#f5f5f5',
+          active: '#e8e8e8'
+        },
+        dark: {
+          primary: '#4a90e2',
+          secondary: '#5a5de8',
+          background: '#1a1a1a',
+          text: '#ffffff',
+          border: '#333333',
+          hover: '#2a2a2a',
+          active: '#3a3a3a'
+        }
+      },
+      modern: {
+        light: {
+          primary: '#00bcd4',
+          secondary: '#ff4081',
+          background: '#ffffff',
+          text: '#2c3e50',
+          border: '#ecf0f1',
+          hover: '#f6f8f9',
+          active: '#edf1f2'
+        },
+        dark: {
+          primary: '#00bcd4',
+          secondary: '#ff4081',
+          background: '#2c3e50',
+          text: '#ecf0f1',
+          border: '#34495e',
+          hover: '#2c3e50',
+          active: '#34495e'
+        }
+      }
+    };
+
+    this.currentConfig = { ...this.defaultConfig };
+    this.init();
+  }
+
+  init() {
+    // 从存储中加载主题配置
+    const savedConfig = dbStorage.getData('themeConfig');
+    if (savedConfig) {
+      this.currentConfig = { ...this.defaultConfig, ...savedConfig };
+    }
+
+    // 初始化系统主题监听
+    if (window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      mediaQuery.addListener((e) => this.handleSystemThemeChange(e));
+    }
+
+    // 应用当前主题
+    this.applyTheme();
+    
+    // 初始化UI
+    this.initUI();
+  }
+
+  initUI() {
+    const modeSelect = document.getElementById('themeMode');
+    const presetSelect = document.getElementById('themePreset');
+    const customSection = document.getElementById('customThemeSection');
+    const primaryColor = document.getElementById('primaryColor');
+    const secondaryColor = document.getElementById('secondaryColor');
+
+    if (modeSelect) modeSelect.value = this.currentConfig.mode;
+    if (presetSelect) presetSelect.value = this.currentConfig.preset;
+    if (primaryColor) primaryColor.value = this.currentConfig.customColors.primary;
+    if (secondaryColor) secondaryColor.value = this.currentConfig.customColors.secondary;
+
+    if (customSection) {
+      customSection.style.display = 
+        this.currentConfig.preset === 'custom' ? 'block' : 'none';
+    }
+  }
+
+  handleSystemThemeChange(e) {
+    if (this.currentConfig.mode === 'system') {
+      this.applyTheme();
+    }
+  }
+
+  getEffectiveTheme() {
+    if (this.currentConfig.mode === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return this.currentConfig.mode;
+  }
+
+  applyTheme() {
+    const theme = this.getEffectiveTheme();
+    const preset = this.currentConfig.preset;
+    const root = document.documentElement;
+
+    // 设置主题属性
+    root.setAttribute('data-theme', theme);
+    root.setAttribute('data-theme-preset', preset);
+
+    // 获取当前预设的颜色方案
+    let colors;
+    if (preset === 'custom') {
+      colors = {
+        primary: this.currentConfig.customColors.primary,
+        secondary: this.currentConfig.customColors.secondary,
+        background: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+        text: theme === 'dark' ? '#ffffff' : '#333333',
+        border: theme === 'dark' ? '#333333' : '#e0e0e0',
+        hover: theme === 'dark' ? '#2a2a2a' : '#f5f5f5',
+        active: theme === 'dark' ? '#3a3a3a' : '#e8e8e8'
+      };
+    } else {
+      colors = this.presets[preset][theme];
+    }
+
+    // 应用颜色变量
+    root.style.setProperty('--primary-color', colors.primary);
+    root.style.setProperty('--secondary-color', colors.secondary);
+    root.style.setProperty('--background-color', colors.background);
+    root.style.setProperty('--text-color', colors.text);
+    root.style.setProperty('--border-color', colors.border);
+    root.style.setProperty('--hover-color', colors.hover);
+    root.style.setProperty('--active-color', colors.active);
+    root.style.setProperty('--header-bg', 
+      `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`);
+
+    // 保存配置
+    dbStorage.setData('themeConfig', this.currentConfig);
+  }
+
+  resetTheme() {
+    this.currentConfig = { ...this.defaultConfig };
+    this.applyTheme();
+    this.initUI();
+  }
+}
+
+class ImageLoader {
+  constructor() {
+    this.loadingImages = new Map();
+    this.setupImageLoadingObserver();
+  }
+
+  setupImageLoadingObserver() {
+    this.observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const images = node.getElementsByClassName('clipboard-image');
+            Array.from(images).forEach(img => this.handleImageElement(img));
+          }
+        });
+      });
+    });
+
+    // 开始观察
+    this.observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  handleImageElement(imgElement) {
+    if (!imgElement || !imgElement.id) {
+      console.error('无效的图片元素:', imgElement);
+      return;
+    }
+
+    // 如果已经在加载中，避免重复处理
+    if (this.loadingImages.has(imgElement.id)) {
+      return;
+    }
+
+    const container = imgElement.closest('.image-container');
+    if (!container) {
+      console.error('找不到图片容器元素');
+      return;
+    }
+
+    const spinner = container.querySelector('.loading-spinner');
+    const errorMsg = container.querySelector('.error-message');
+    
+    // 确保加载状态正确
+    if (spinner) spinner.style.display = 'block';
+    if (errorMsg) errorMsg.style.display = 'none';
+    if (imgElement) imgElement.style.display = 'none';
+    
+    this.loadingImages.set(imgElement.id, {
+      element: imgElement,
+      spinner,
+      errorMsg
+    });
+
+    // 获取原始图片路径
+    const originalSrc = imgElement.getAttribute('src');
+    console.log('开始加载图片:', originalSrc);
+
+    // 预加载图片
+    const tempImage = new Image();
+    
+    tempImage.onload = () => {
+      console.log('图片加载成功:', originalSrc);
+      const imageData = this.loadingImages.get(imgElement.id);
+      if (!imageData) return;
+
+      const { element, spinner, errorMsg } = imageData;
+      
+      // 确保所有元素都存在并且有效
+      if (spinner && spinner.style) {
+        spinner.style.display = 'none';
+      }
+      
+      if (errorMsg && errorMsg.style) {
+        errorMsg.style.display = 'none';
+      }
+      
+      if (element && element.style) {
+        element.style.display = 'block';
+        element.src = tempImage.src;
+        element.classList.add('loaded');
+        element.style.opacity = '1';
+      }
+      
+      this.loadingImages.delete(imgElement.id);
+    };
+
+    tempImage.onerror = (error) => {
+      console.error('图片加载失败:', originalSrc, error);
+      const imageData = this.loadingImages.get(imgElement.id);
+      if (!imageData) return;
+
+      const { element, spinner, errorMsg } = imageData;
+      
+      if (spinner && spinner.style) {
+        spinner.style.display = 'none';
+      }
+      
+      if (errorMsg && errorMsg.style) {
+        errorMsg.style.display = 'block';
+        errorMsg.textContent = '无法加载图片';
+      }
+      
+      if (element && element.style) {
+        element.style.display = 'none';
+      }
+      
+      this.loadingImages.delete(imgElement.id);
+    };
+
+    // 保存原始路径并开始加载
+    imgElement.setAttribute('data-original-src', originalSrc);
+    tempImage.src = this.normalizeImagePath(originalSrc);
+  }
+
+  normalizeImagePath(path) {
+    if (!path) return '';
+    
+    // 移除所有 file:// 前缀并解码 URL
+    let normalizedPath = decodeURIComponent(path.replace(/^file:\/\//g, ''));
+    
+    // 确保路径以 file:// 开头
+    if (!normalizedPath.startsWith('file://')) {
+      normalizedPath = 'file://' + normalizedPath;
+    }
+    
+    console.log('规范化后的图片路径:', normalizedPath);
+    return normalizedPath;
+  }
+
+  destroy() {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+    this.loadingImages.clear();
+  }
+}
+
 class ContentTools {
+  constructor() {
+    this.imageLoader = new ImageLoader();
+    this.lastPasteTime = 0;
+    this.minPasteInterval = 50; // 最小粘贴间隔时间(ms)
+  }
+
   renderContent(item) {
     if (item.type === "image") {
-      // 确保图片路径使用 file:// 协议
-      const imagePath = item.content.startsWith('file://') ? item.content : `file://${item.content}`;
-      return `
-        <div class="image-container">
-          <div class="loading-spinner"></div>
-          <img src="${imagePath}" 
-               class="lozad"
-               alt="Clipboard image" 
-               style="max-width: 100%; max-height: 100px; display: none;"
-               onload="this.style.display='block'; this.classList.add('loaded'); this.previousElementSibling.style.display='none';"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-          <p style="display: none; text-align: center; color: #999;">无法加载图片</p>
-        </div>
-      `;
+      const imagePath = this.normalizeImagePath(item.content);
+      const ids = this.generateIds(item.id);
+      
+      return this.createImageContainer(imagePath, ids);
     }
+    
+    return this.renderOtherContent(item);
+  }
+
+  normalizeImagePath(content) {
+    return content.replace(/^file:\/\/file:\/\//, 'file://');
+  }
+
+  generateIds(itemId) {
+    const baseId = itemId || Date.now();
+    return {
+      container: `image-container-${baseId}`,
+      image: `img-${baseId}`,
+      spinner: `spinner-${baseId}`,
+      error: `error-${baseId}`
+    };
+  }
+
+  createImageContainer(imagePath, ids) {
+    return `
+      <div class="image-container" id="${ids.container}">
+        <div class="loading-spinner" id="${ids.spinner}"></div>
+        <img src="${imagePath}" 
+             id="${ids.image}"
+             class="clipboard-image"
+             alt="Clipboard image" 
+             style="max-width: 100%; max-height: 100px; display: none;"
+             loading="lazy">
+        <p class="error-message" 
+           id="${ids.error}" 
+           style="display: none; text-align: center; color: #999;">
+           无法加载图片
+        </p>
+      </div>
+    `;
+  }
+
+  renderOtherContent(item) {
     switch (item.type) {
       case "text":
         return this.formatTextContent(item.content);
@@ -90,6 +420,7 @@ class ContentTools {
   }
 
   formatTextContent(text) {
+    if (!text) return '';
     const urlPattern = /(https?:\/\/[^\s]+)/g;
     return text.replace(urlPattern, (url) => {
       return `<a href="${url}" class="link-mention" target="_blank">${url}</a>`;
@@ -97,13 +428,26 @@ class ContentTools {
   }
 
   pasteContentToSystem() {
-    setTimeout(() => {
-      if (utools.isMacOS()) {
-        utools.simulateKeyboardTap("v", "command");
-      } else {
-        utools.simulateKeyboardTap("v", "ctrl");
-      }
-    }, 0);
+    const now = Date.now();
+    // 检查是否距离上次粘贴操作太近
+    if (now - this.lastPasteTime < this.minPasteInterval) {
+      return;
+    }
+    
+    this.lastPasteTime = now;
+    
+    // 根据操作系统选择合适的粘贴快捷键
+    if (utools.isMacOS()) {
+      utools.simulateKeyboardTap("v", "command");
+    } else {
+      utools.simulateKeyboardTap("v", "ctrl");
+    }
+  }
+
+  destroy() {
+    if (this.imageLoader) {
+      this.imageLoader.destroy();
+    }
   }
 }
 
@@ -114,6 +458,13 @@ let registerEvent = null;
 class RegisterEvent {
   registerHistoryItemEvent() {
     const historyElement = document.getElementById("history");
+
+    // 先移除所有已存在的事件监听器
+    const oldItems = historyElement.querySelectorAll(".history-item");
+    oldItems.forEach(item => {
+      const newItem = item.cloneNode(true);
+      item.parentNode.replaceChild(newItem, item);
+    });
 
     historyElement.querySelectorAll(".history-item").forEach((item) => {
       item.addEventListener("click", (e) => {
@@ -230,20 +581,115 @@ class RegisterEvent {
   }
 
   registerSettingsEvent() {
-    document.getElementById("saveSettings").addEventListener("click", () => {
-      const maxHistoryCount = document.getElementById("maxHistoryCount").value;
-      const pasteToSystem = document.getElementById("pasteToSystem").checked;
-      const ocrAk = document.getElementById("ocrAk").value;
-      const ocrSk = document.getElementById("ocrSk").value;
-      settings.set({ maxHistoryCount, pasteToSystem, ocrAk, ocrSk });
-      showToast("设置保存成功");
-    });
+    const maxHistoryCount = document.getElementById("maxHistoryCount");
+    const pasteToSystem = document.getElementById("pasteToSystem");
+    const ocrAk = document.getElementById("ocrAk");
+    const ocrSk = document.getElementById("ocrSk");
+    const clearHistory = document.getElementById("clearHistory");
+    const clearFavorites = document.getElementById("clearFavorites");
+    const resetTheme = document.getElementById("resetTheme");
+    const themeMode = document.getElementById("themeMode");
+    const themePreset = document.getElementById("themePreset");
+    const primaryColor = document.getElementById("primaryColor");
+    const secondaryColor = document.getElementById("secondaryColor");
 
-    document.getElementById("resetSettings").addEventListener("click", () => {
-      settings.set(defaultSettingsConfig);
-      showToast("设置重置成功");
-      showSection(SETTINGS_SECTION);
-    });
+    // 检查元素是否存在并添加事件监听器
+    if (maxHistoryCount) {
+      maxHistoryCount.addEventListener("change", (e) => {
+        const value = parseInt(e.target.value);
+        if (isNaN(value) || value < 1) {
+          e.target.value = settings.get().maxHistoryCount;
+          return;
+        }
+        const settingsConfig = settings.get();
+        settingsConfig.maxHistoryCount = value;
+        settings.set(settingsConfig);
+      });
+    }
+
+    if (pasteToSystem) {
+      pasteToSystem.addEventListener("change", (e) => {
+        const settingsConfig = settings.get();
+        settingsConfig.pasteToSystem = e.target.checked;
+        settings.set(settingsConfig);
+      });
+    }
+
+    if (ocrAk) {
+      ocrAk.addEventListener("change", (e) => {
+        const settingsConfig = settings.get();
+        settingsConfig.ocrAk = e.target.value;
+        settings.set(settingsConfig);
+      });
+    }
+
+    if (ocrSk) {
+      ocrSk.addEventListener("change", (e) => {
+        const settingsConfig = settings.get();
+        settingsConfig.ocrSk = e.target.value;
+        settings.set(settingsConfig);
+      });
+    }
+
+    if (clearHistory) {
+      clearHistory.addEventListener("click", () => {
+        createConfirmationModal("确定要清除所有历史记录吗？", () => {
+          historyList.clearHistoryList();
+        });
+      });
+    }
+
+    if (clearFavorites) {
+      clearFavorites.addEventListener("click", () => {
+        createConfirmationModal("确定要清除所有收藏吗？", () => {
+          favoritesList.clearFavoritesList();
+        });
+      });
+    }
+
+    // 主题相关事件
+    if (resetTheme) {
+      resetTheme.addEventListener("click", () => {
+        window.themeManager.resetTheme();
+        showToast("主题已重置");
+      });
+    }
+
+    if (themeMode) {
+      themeMode.addEventListener("change", (e) => {
+        window.themeManager.currentConfig.mode = e.target.value;
+        window.themeManager.applyTheme();
+      });
+    }
+
+    if (themePreset) {
+      themePreset.addEventListener("change", (e) => {
+        window.themeManager.currentConfig.preset = e.target.value;
+        const customSection = document.getElementById("customThemeSection");
+        if (customSection) {
+          customSection.style.display = e.target.value === "custom" ? "block" : "none";
+        }
+        window.themeManager.applyTheme();
+      });
+    }
+
+    if (primaryColor) {
+      primaryColor.addEventListener("change", (e) => {
+        window.themeManager.currentConfig.customColors.primary = e.target.value;
+        if (window.themeManager.currentConfig.preset === "custom") {
+          window.themeManager.applyTheme();
+        }
+      });
+    }
+
+    if (secondaryColor) {
+      secondaryColor.addEventListener("change", (e) => {
+        window.themeManager.currentConfig.customColors.secondary = e.target.value;
+        if (window.themeManager.currentConfig.preset === "custom") {
+          window.themeManager.applyTheme();
+        }
+      });
+    }
   }
 
   registerFavoritesItemEvent() {
@@ -1101,6 +1547,9 @@ function adjustSidebarWidth() {
 function exitAPP() {
   searchKeyword = "";
   document.getElementById("search").value = "";
+  if (contentTools) {
+    contentTools.destroy();
+  }
   utools.hideMainWindow();
   utools.outPlugin();
 }
@@ -1108,6 +1557,9 @@ function exitAPP() {
 function initAPP() {
   settings = new Settings();
   settings.init();
+
+  // 初始化主题管理器
+  window.themeManager = new ThemeManager();
 
   contentTools = new ContentTools();
 

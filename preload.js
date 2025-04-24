@@ -119,15 +119,37 @@ async function CheckSystemClipboard(callback) {
 // 设置数据到系统剪贴板
 function CopyToSystemClipboard(item) {
   try {
+    if (!item || !item.content) {
+      console.error("无效的剪贴板项目");
+      return false;
+    }
+
     if (item.type === "text") {
       clipboard.writeText(item.content);
+      return true;
     } else if (item.type === "image") {
-      const data = fs.readFileSync(item.content);
+      console.log('复制图片:', item.content);
+      // 移除所有 file:// 协议前缀，并处理 URL 编码
+      const actualPath = decodeURIComponent(item.content.replace(/^file:\/\//g, ''));
+      console.log('处理后的路径:', actualPath);
+
+      if (!fs.existsSync(actualPath)) {
+        console.error("图片文件不存在:", actualPath);
+        return false;
+      }
+      const data = fs.readFileSync(actualPath);
       const image = nativeImage.createFromBuffer(data);
+      if (image.isEmpty()) {
+        console.error("无效的图片数据");
+        return false;
+      }
       clipboard.writeImage(image);
+      return true;
     }
+    return false;
   } catch (error) {
     console.error("复制到剪贴板失败:", error);
+    return false;
   }
 }
 
@@ -138,26 +160,31 @@ function ExportSingleHistoryItem(item) {
 
     if (item.type === "image") {
       // 检查图片文件是否存在
-      if (!fs.existsSync(item.content.replace('file://', ''))) {
+      const imagePath = item.content.replace('file://', '');
+      if (!fs.existsSync(imagePath)) {
         console.error("图片文件不存在:", item.content);
         return false;
       }
 
       // 读取图片文件
-      content = fs.readFileSync(item.content.replace('file://', ''));
+      content = fs.readFileSync(imagePath);
       
       // 选择保存路径
       filePath = utools.showSaveDialog({
         title: "导出图片",
         defaultPath: `clipboard_image_${Date.now()}.png`,
-        filters: [{ name: "Images", extensions: ["png"] }],
+        filters: [
+          { name: "PNG图片", extensions: ["png"] },
+          { name: "JPG图片", extensions: ["jpg", "jpeg"] },
+          { name: "所有文件", extensions: ["*"] }
+        ]
       });
     } else {
       content = item.content;
       filePath = utools.showSaveDialog({
         title: "导出文本",
         defaultPath: `clipboard_text_${Date.now()}.txt`,
-        filters: [{ name: "Text", extensions: ["txt"] }],
+        filters: [{ name: "文本文件", extensions: ["txt"] }],
       });
     }
 
@@ -212,8 +239,16 @@ function SaveFile(content, fileName) {
     const filePath = path.join(storageDir, fileName);
     fs.writeFileSync(filePath, content);
     
-    // 返回相对路径，使用 file:// 协议
-    return `file://${filePath}`;
+    // 验证文件是否成功写入
+    if (!fs.existsSync(filePath)) {
+      console.error("文件写入失败");
+      return null;
+    }
+
+    // 使用 file:// 协议，并确保路径格式正确
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    console.log('保存文件路径:', normalizedPath);
+    return `file://${normalizedPath}`;
   } catch (error) {
     console.error("存储文件失败:", error);
     return null;
@@ -221,72 +256,122 @@ function SaveFile(content, fileName) {
 }
 
 function ReadImageFile(filePath) {
-  return fs.readFileSync(filePath);
+  try {
+    console.log('读取图片文件:', filePath);
+    // 移除所有 file:// 协议前缀，并处理 URL 编码
+    const actualPath = decodeURIComponent(filePath.replace(/^file:\/\//g, ''));
+    console.log('处理后的路径:', actualPath);
+    
+    if (!fs.existsSync(actualPath)) {
+      console.error('图片文件不存在:', actualPath);
+      return null;
+    }
+    return fs.readFileSync(actualPath);
+  } catch (error) {
+    console.error('读取图片文件失败:', error);
+    return null;
+  }
 }
 
 async function OcrImage(image, ak, sk) {
-  return await ocr(image, ak, sk);
+  try {
+    if (!ak || !sk) {
+      console.error('OCR API key 或 Secret key 未设置');
+      return [];
+    }
+    return await ocr(image, ak, sk);
+  } catch (error) {
+    console.error('OCR 识别失败:', error);
+    return [];
+  }
 }
 
 async function ocr(image, ak, sk) {
-  var options = {
-    method: "POST",
-    url:
-      "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic?access_token=" +
-      (await getAccessToken(ak, sk)),
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-    data: {
-      detect_direction: "false",
-      paragraph: "false",
-      probability: "false",
-      multidirectional_recognize: "false",
-      image: image,
-    },
-  };
+  try {
+    // 获取 access token
+    const accessToken = await getAccessToken(ak, sk);
+    if (!accessToken) {
+      console.error('获取 access token 失败');
+      return [];
+    }
 
-  // 返回新的 Promise
-  return new Promise((resolve, reject) => {
-    fetch(options.url, {
+    const options = {
+      method: "POST",
+      url: `https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic?access_token=${accessToken}`,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      data: {
+        detect_direction: "false",
+        paragraph: "false",
+        probability: "false",
+        language_type: "CHN_ENG",
+        image: image,
+      },
+    };
+
+    const response = await fetch(options.url, {
       method: options.method,
       headers: options.headers,
       body: new URLSearchParams(options.data),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        resolve(data?.words_result || []);
-      })
-      .catch((error) => {
-        reject(error);
-      });
-  });
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.error_code) {
+      console.error('百度 OCR API 错误:', data.error_msg);
+      return [];
+    }
+
+    return data?.words_result || [];
+  } catch (error) {
+    console.error('OCR 请求失败:', error);
+    return [];
+  }
 }
 
-function getAccessToken(ak, sk) {
-  let options = {
-    method: "POST",
-    url:
-      "https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=" +
-      ak +
-      "&client_secret=" +
-      sk,
-  };
-  return new Promise((resolve, reject) => {
-    fetch(options.url, {
+async function getAccessToken(ak, sk) {
+  try {
+    const options = {
+      method: "POST",
+      url: "https://aip.baidubce.com/oauth/2.0/token",
+      params: {
+        grant_type: "client_credentials",
+        client_id: ak,
+        client_secret: sk,
+      },
+    };
+
+    const url = new URL(options.url);
+    Object.entries(options.params).forEach(([key, value]) => {
+      url.searchParams.append(key, value);
+    });
+
+    const response = await fetch(url.toString(), {
       method: options.method,
-      headers: options.headers,
-      body: new URLSearchParams(options.data),
-    })
-      .then((response) => response.json())
-      .then((res) => {
-        resolve(res.access_token);
-      })
-      .catch((error) => {
-        reject(error);
-      });
-  });
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.access_token) {
+      console.error('获取 access token 失败:', data);
+      return null;
+    }
+
+    return data.access_token;
+  } catch (error) {
+    console.error('获取 access token 失败:', error);
+    return null;
+  }
 }
 
 window.services = {
