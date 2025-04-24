@@ -132,28 +132,42 @@ function CopyToSystemClipboard(item) {
 }
 
 function ExportSingleHistoryItem(item) {
-  let content = "";
-  let filePath = "";
-  if (item.type === "image") {
-    content = fs.readFileSync(item.content);
-    filePath = utools.showSaveDialog({
-      title: "导出图片",
-      defaultPath: `clipboard_image_${Date.now()}.png`,
-      filters: [{ name: "Images", extensions: ["png"] }],
-    });
-  } else {
-    content = item.content;
-    filePath = utools.showSaveDialog({
-      title: "导出文本",
-      defaultPath: `clipboard_text_${Date.now()}.txt`,
-      filters: [{ name: "Text", extensions: ["txt"] }],
-    });
-  }
+  try {
+    let content = "";
+    let filePath = "";
 
-  if (filePath) {
-    fs.writeFileSync(filePath, content);
-    return true;
-  } else {
+    if (item.type === "image") {
+      // 检查图片文件是否存在
+      if (!fs.existsSync(item.content.replace('file://', ''))) {
+        console.error("图片文件不存在:", item.content);
+        return false;
+      }
+
+      // 读取图片文件
+      content = fs.readFileSync(item.content.replace('file://', ''));
+      
+      // 选择保存路径
+      filePath = utools.showSaveDialog({
+        title: "导出图片",
+        defaultPath: `clipboard_image_${Date.now()}.png`,
+        filters: [{ name: "Images", extensions: ["png"] }],
+      });
+    } else {
+      content = item.content;
+      filePath = utools.showSaveDialog({
+        title: "导出文本",
+        defaultPath: `clipboard_text_${Date.now()}.txt`,
+        filters: [{ name: "Text", extensions: ["txt"] }],
+      });
+    }
+
+    if (filePath) {
+      fs.writeFileSync(filePath, content);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("导出失败:", error);
     return false;
   }
 }
