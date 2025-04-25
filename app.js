@@ -226,193 +226,212 @@ class ImageLoader {
   }
 
   setupImageLoadingObserver() {
-    this.observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const images = node.getElementsByClassName('clipboard-image');
-            Array.from(images).forEach(img => this.handleImageElement(img));
-          }
-        });
-      });
-    });
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          if (img && img.hasAttribute('data-src')) {
+            const imagePath = img.getAttribute('data-src');
+            console.log('开始加载图片:', imagePath);
+            
+            // 直接在这里处理图片加载，而不是调用 handleImageElement
+            const container = img.closest('.image-container');
+            if (!container) {
+              console.error('找不到图片容器元素');
+              return;
+            }
 
-    // 开始观察
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true
+            const spinner = container.querySelector('.loading-spinner');
+            const errorMsg = container.querySelector('.error-message');
+
+            // 创建新的图片对象用于预加载
+            const preloadImg = new Image();
+            
+            preloadImg.onload = () => {
+              console.log('图片加载成功:', imagePath);
+              
+              // 直接使用当前上下文中的元素引用
+              if (spinner) spinner.style.display = 'none';
+              if (errorMsg) errorMsg.style.display = 'none';
+              
+              img.src = imagePath;
+              img.style.display = 'block';
+              img.style.opacity = '1';
+              img.classList.add('loaded');
+              img.removeAttribute('data-src');
+              
+              // 停止观察这个图片
+              this.observer.unobserve(img);
+            };
+
+            preloadImg.onerror = (error) => {
+              console.error('图片加载失败:', imagePath, error);
+              if (spinner) spinner.style.display = 'none';
+              if (errorMsg) {
+                errorMsg.textContent = '图片加载失败';
+                errorMsg.style.display = 'block';
+              }
+              if (img) img.style.display = 'none';
+              
+              // 停止观察这个图片
+              this.observer.unobserve(img);
+            };
+
+            // 开始加载图片
+            preloadImg.src = imagePath;
+          }
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '50px',
+      threshold: 0.1
     });
   }
 
   handleImageElement(imgElement) {
     if (!imgElement || !imgElement.id) {
-      console.error('无效的图片元素:', imgElement);
+      console.error('无效的图片元素');
       return;
     }
 
-    // 如果已经在加载中，避免重复处理
-    if (this.loadingImages.has(imgElement.id)) {
-      console.log('图片已在加载中，跳过:', imgElement.id);
-      return;
-    }
-
-    const container = imgElement.closest('.image-container');
-    if (!container) {
-      console.error('找不到图片容器元素');
-      return;
-    }
-
-    const spinner = container.querySelector('.loading-spinner');
-    const errorMsg = container.querySelector('.error-message');
-    
-    // 存储初始状态
-    const initialState = {
-      container,
-      element: imgElement,
-      spinner,
-      errorMsg,
-      id: imgElement.id
-    };
-    
-    // 确保加载状态正确
-    if (spinner) spinner.style.display = 'block';
-    if (errorMsg) errorMsg.style.display = 'none';
-    if (imgElement) imgElement.style.display = 'none';
-    
-    this.loadingImages.set(imgElement.id, initialState);
-
-    // 获取原始图片路径
-    const originalSrc = imgElement.getAttribute('src');
-    console.log('开始加载图片，原始路径:', originalSrc);
-
-    // 检查文件是否存在
     try {
-      const normalizedPath = this.normalizeImagePath(originalSrc);
-      console.log('规范化后的路径:', normalizedPath);
-      
-      // 移除 file:// 前缀以检查文件
-      const actualPath = decodeURIComponent(normalizedPath.replace(/^file:\/\//g, ''));
-      console.log('实际文件路径:', actualPath);
-      
-      // 使用 preload 中的方法检查文件
-      const imageData = window.preload.ReadImageFile(normalizedPath);
-      if (!imageData) {
-        throw new Error('图片文件不存在或无法读取');
+      const container = imgElement.closest('.image-container');
+      if (!container) {
+        console.error('找不到图片容器元素');
+        return;
       }
 
-      // 预加载图片
-      const tempImage = new Image();
+      const spinner = container.querySelector('.loading-spinner');
+      const errorMsg = container.querySelector('.error-message');
       
-      tempImage.onload = () => {
-        console.log('图片加载成功:', normalizedPath);
-        
-        // 获取最新的状态
-        const currentState = this.loadingImages.get(imgElement.id);
-        if (!currentState) {
-          console.log('找不到图片加载状态，可能已被清理');
-          return;
-        }
+      // 重置状态
+      if (spinner) spinner.style.display = 'block';
+      if (errorMsg) {
+        errorMsg.style.display = 'none';
+        errorMsg.textContent = '';
+      }
 
-        // 检查元素是否仍然存在于文档中
-        if (!document.body.contains(currentState.container)) {
-          console.log('图片容器已不在文档中');
-          this.loadingImages.delete(imgElement.id);
-          return;
-        }
+      // 获取图片路径
+      let imagePath = imgElement.getAttribute('data-src');
+      console.log('原始图片路径:', imagePath);
 
-        // 重新获取所有元素（以防它们被替换）
-        const container = document.getElementById(currentState.container.id);
-        const element = document.getElementById(currentState.id);
-        const spinner = container ? container.querySelector('.loading-spinner') : null;
-        const errorMsg = container ? container.querySelector('.error-message') : null;
+      // 处理路径
+      imagePath = this.normalizeImagePath(imagePath);
+      console.log('处理后的图片路径:', imagePath);
 
-        // 安全地更新 UI
-        if (spinner && spinner.style) {
-          spinner.style.display = 'none';
-        }
+      if (!imagePath) {
+        throw new Error('图片路径无效');
+      }
+
+      // 创建新的图片对象用于预加载
+      const preloadImg = new Image();
+      
+      preloadImg.onload = () => {
+        console.log('图片加载成功:', imagePath);
         
-        if (errorMsg && errorMsg.style) {
-          errorMsg.style.display = 'none';
+        // 确保所有需要的元素都存在
+        const targetImg = document.getElementById(imgElement.id);
+        const targetContainer = targetImg ? targetImg.closest('.image-container') : null;
+        const targetSpinner = targetContainer ? targetContainer.querySelector('.loading-spinner') : null;
+        const targetError = targetContainer ? targetContainer.querySelector('.error-message') : null;
+
+        // 安全地更新 DOM
+        if (targetSpinner) {
+          targetSpinner.style.display = 'none';
+          console.log('隐藏加载动画');
         }
-        
-        if (element && element.style) {
-          element.style.display = 'block';
-          element.src = normalizedPath;
-          element.classList.add('loaded');
-          element.style.opacity = '1';
+        if (targetError) {
+          targetError.style.display = 'none';
+          console.log('隐藏错误信息');
+        }
+        if (targetImg) {
+          console.log('更新图片显示状态');
+          targetImg.src = imagePath;
+          targetImg.style.display = 'block';
+          targetImg.style.opacity = '1';
+          targetImg.classList.add('loaded');
+          targetImg.removeAttribute('data-src');
         } else {
-          console.log('图片元素不存在或无效');
+          console.error('找不到目标图片元素:', imgElement.id);
         }
-        
-        this.loadingImages.delete(imgElement.id);
       };
 
-      tempImage.onerror = (error) => {
-        console.error('图片加载失败:', normalizedPath, error);
-        this.handleImageError(imgElement.id, '图片加载失败');
+      preloadImg.onerror = (error) => {
+        console.error('图片加载失败:', imagePath, error);
+        const targetContainer = document.getElementById(imgElement.id)?.closest('.image-container');
+        if (targetContainer) {
+          this.showError(targetContainer, '图片加载失败');
+        }
       };
 
       // 开始加载图片
-      tempImage.src = normalizedPath;
-      
+      preloadImg.src = imagePath;
+
     } catch (error) {
-      console.error('处理图片时发生错误:', error);
-      this.handleImageError(imgElement.id, '无法加载图片: ' + error.message);
+      console.error('图片处理错误:', error);
+      const targetContainer = document.getElementById(imgElement.id)?.closest('.image-container');
+      if (targetContainer) {
+        this.showError(targetContainer, error.message || '图片处理出错');
+      }
     }
   }
 
-  handleImageError(imageId, errorMessage) {
-    const currentState = this.loadingImages.get(imageId);
-    if (!currentState) return;
+  showError(container, message) {
+    if (!container) return;
 
-    // 检查元素是否仍然存在于文档中
-    if (!document.body.contains(currentState.container)) {
-      console.log('图片容器已不在文档中');
-      this.loadingImages.delete(imageId);
-      return;
-    }
+    const spinner = container.querySelector('.loading-spinner');
+    const errorMsg = container.querySelector('.error-message');
+    const img = container.querySelector('.clipboard-image');
 
-    // 重新获取所有元素
-    const container = document.getElementById(currentState.container.id);
-    const element = document.getElementById(currentState.id);
-    const spinner = container ? container.querySelector('.loading-spinner') : null;
-    const errorMsg = container ? container.querySelector('.error-message') : null;
-
-    // 安全地更新 UI
-    if (spinner && spinner.style) {
-      spinner.style.display = 'none';
-    }
-    
-    if (errorMsg && errorMsg.style) {
+    if (spinner) spinner.style.display = 'none';
+    if (errorMsg) {
+      errorMsg.textContent = message;
       errorMsg.style.display = 'block';
-      errorMsg.textContent = errorMessage;
     }
-    
-    if (element && element.style) {
-      element.style.display = 'none';
-    }
-    
-    this.loadingImages.delete(imageId);
+    if (img) img.style.display = 'none';
   }
 
   normalizeImagePath(path) {
-    if (!path) return '';
-    
-    // 移除所有 file:// 前缀并解码 URL
-    let normalizedPath = decodeURIComponent(path.replace(/^file:\/\//g, ''));
-    
-    // 确保路径以 file:// 开头
-    if (!normalizedPath.startsWith('file://')) {
-      normalizedPath = 'file://' + normalizedPath;
+    if (!path) {
+      console.error('路径为空');
+      return null;
     }
-    
-    console.log('规范化后的图片路径:', normalizedPath);
-    return normalizedPath;
+
+    try {
+      // 移除多余的 file:// 前缀
+      let normalizedPath = path;
+      
+      // 如果路径以 file:// 开头，移除它
+      if (normalizedPath.startsWith('file://')) {
+        normalizedPath = normalizedPath.substring(7);
+      }
+
+      // 解码 URL
+      normalizedPath = decodeURIComponent(normalizedPath);
+
+      // 检查文件是否存在
+      console.log('检查文件是否存在:', normalizedPath);
+      const fileExists = window.preload.ReadImageFile(normalizedPath);
+      
+      if (!fileExists) {
+        console.error('图片文件不存在:', normalizedPath);
+        return null;
+      }
+
+      // 重新添加 file:// 前缀
+      return 'file://' + normalizedPath;
+
+    } catch (error) {
+      console.error('路径处理错误:', error);
+      return null;
+    }
   }
 
   destroy() {
     if (this.observer) {
       this.observer.disconnect();
+      this.observer = null;
     }
     this.loadingImages.clear();
   }
@@ -422,31 +441,70 @@ class ContentTools {
   constructor() {
     this.imageLoader = new ImageLoader();
     this.lastPasteTime = 0;
-    this.minPasteInterval = 50; // 最小粘贴间隔时间(ms)
+    this.minPasteInterval = 50;
   }
 
   renderContent(item) {
+    if (!item || !item.type) {
+      console.error('无效的内容项:', item);
+      return '';
+    }
+
     if (item.type === "image") {
-      const imagePath = this.normalizeImagePath(item.content);
-      const ids = this.generateIds(item.id);
-      
-      return this.createImageContainer(imagePath, ids);
+      try {
+        const imagePath = this.normalizeImagePath(item.content);
+        if (!imagePath) {
+          console.error('图片路径无效:', item.content);
+          return '<p class="error-message">无效的图片路径</p>';
+        }
+
+        const ids = this.generateIds(item.id);
+        return this.createImageContainer(imagePath, ids);
+      } catch (error) {
+        console.error('渲染图片内容时出错:', error);
+        return '<p class="error-message">图片渲染失败</p>';
+      }
     }
     
     return this.renderOtherContent(item);
   }
 
   normalizeImagePath(content) {
-    return content.replace(/^file:\/\/file:\/\//, 'file://');
+    if (!content) return null;
+    
+    try {
+      // 移除重复的 file:// 前缀
+      let normalizedPath = content.replace(/^(file:\/\/)+/g, 'file://');
+      
+      // 确保路径是绝对路径
+      if (!normalizedPath.startsWith('file://')) {
+        normalizedPath = 'file://' + normalizedPath;
+      }
+      
+      // 解码 URL
+      normalizedPath = decodeURIComponent(normalizedPath);
+      
+      // 验证文件是否存在
+      const pathWithoutProtocol = normalizedPath.replace(/^file:\/\//g, '');
+      if (!window.preload.ReadImageFile(pathWithoutProtocol)) {
+        console.error('图片文件不存在:', pathWithoutProtocol);
+        return null;
+      }
+      
+      return normalizedPath;
+    } catch (error) {
+      console.error('处理图片路径时出错:', error);
+      return null;
+    }
   }
 
   generateIds(itemId) {
-    const baseId = itemId || Date.now();
+    const uniqueId = itemId || Date.now() + Math.random().toString(36).substr(2, 9);
     return {
-      container: `image-container-${baseId}`,
-      image: `img-${baseId}`,
-      spinner: `spinner-${baseId}`,
-      error: `error-${baseId}`
+      container: `image-container-${uniqueId}`,
+      image: `img-${uniqueId}`,
+      spinner: `spinner-${uniqueId}`,
+      error: `error-${uniqueId}`
     };
   }
 
@@ -457,9 +515,10 @@ class ContentTools {
         <img src="${imagePath}" 
              id="${ids.image}"
              class="clipboard-image"
-             alt="Clipboard image" 
+             alt="剪贴板图片" 
              style="max-width: 100%; max-height: 100px; display: none;"
-             loading="lazy">
+             loading="lazy"
+             onerror="this.parentElement.querySelector('.error-message').style.display='block'; this.style.display='none';">
         <p class="error-message" 
            id="${ids.error}" 
            style="display: none; text-align: center; color: #999;">
@@ -1084,9 +1143,34 @@ class RegisterEvent {
 //----------------------------------//
 let historyList = null;
 class HistoryList {
+  constructor() {
+    this.observer = null;
+    this.setupIntersectionObserver();
+  }
+
+  setupIntersectionObserver() {
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          if (img.hasAttribute('data-src')) {
+            img.src = img.getAttribute('data-src');
+            img.removeAttribute('data-src');
+            img.style.display = 'block';
+          }
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '50px',
+      threshold: 0.1
+    });
+  }
+
   addContentToHistoryList(clipboardData) {
     const historyID = clipboardData.id;
     const maxHistoryCount = settings.get().maxHistoryCount;
+    
     // 添加检查确保不会添加 null 值
     if (clipboardData && clipboardData.content) {
       if (historyListDataMap[historyID] == null) {
@@ -1165,52 +1249,124 @@ class HistoryList {
 
   renderHistoryList(ids = historySortIDList) {
     const historyElement = document.getElementById("history");
-    historyElement.innerHTML = ""; // 清空现有内容
+    if (!historyElement) {
+      console.error('找不到历史记录容器元素');
+      return;
+    }
 
-    const batchSize = 10; // 每批渲染的项目数
-    let currentIndex = 0;
+    // 清空现有内容
+    historyElement.innerHTML = '';
 
-    const renderBatch = () => {
-      const fragment = document.createDocumentFragment();
-      const endIndex = Math.min(currentIndex + batchSize, ids.length);
+    // 创建一个文档片段来存储所有新元素
+    const fragment = document.createDocumentFragment();
 
-      for (let i = currentIndex; i < endIndex; i++) {
-        const historyID = ids[i];
-        const historyItem = historyListDataMap[historyID];
-        if (historyItem == null) continue;
+    // 遍历所有历史记录
+    ids.forEach(historyID => {
+      const historyItem = historyListDataMap[historyID];
+      if (!historyItem) return;
 
-        const itemElement = document.createElement("div");
-        itemElement.className = "history-item";
-        itemElement.setAttribute("history-id", historyID);
-        itemElement.innerHTML = `
-          <div class="content">
-            ${contentTools.renderContent(historyItem)}
-          </div>
-          <div class="actions">
-            <button class="copy-btn" history-id="${historyID}">复制</button>
-            <button class="export-btn" history-id="${historyID}">导出</button>
-            <button class="favorite-btn" history-id="${historyID}">收藏</button>
-            <button class="ocr-btn" history-id="${historyID}">OCR</button>
-            <span class="timestamp">${new Date(historyItem.timestamp).toLocaleString()}</span>
-          </div>
-        `;
-        fragment.appendChild(itemElement);
-      }
+      const itemElement = document.createElement('div');
+      itemElement.className = 'history-item';
+      itemElement.setAttribute('history-id', historyID);
 
-      historyElement.appendChild(fragment);
-      currentIndex = endIndex;
+      // 准备内容容器
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'content';
 
-      if (currentIndex < ids.length) {
-        // 如果还有更多项目要渲染，安排下一批
-        requestAnimationFrame(renderBatch);
+      if (historyItem.type === "image") {
+        try {
+          const imagePath = historyItem.content;
+          if (!imagePath) {
+            contentDiv.innerHTML = '<p class="error-message">无效的图片路径</p>';
+          } else {
+            // 检查文件是否存在
+            const pathWithoutProtocol = imagePath.replace(/^file:\/\//g, '');
+            const fileExists = window.preload.ReadImageFile(pathWithoutProtocol);
+
+            if (!fileExists) {
+              contentDiv.innerHTML = '<p class="error-message">图片文件不存在</p>';
+            } else {
+              const containerId = `image-container-${historyID}`;
+              const imageId = `img-${historyID}`;
+              
+              contentDiv.innerHTML = `
+                <div class="image-container" id="${containerId}">
+                  <div class="loading-spinner" style="display: block;"></div>
+                  <img id="${imageId}"
+                       class="clipboard-image"
+                       alt="剪贴板图片" 
+                       style="max-width: 100%; max-height: 100px; display: none; opacity: 0;"
+                       loading="lazy">
+                  <p class="error-message" style="display: none;">无法加载图片</p>
+                </div>
+              `;
+
+              // 等待 DOM 更新后加载图片
+              setTimeout(() => {
+                const container = document.getElementById(containerId);
+                const img = document.getElementById(imageId);
+                const spinner = container?.querySelector('.loading-spinner');
+                const errorMsg = container?.querySelector('.error-message');
+
+                if (img && container) {
+                  // 创建预加载图片
+                  const preloadImg = new Image();
+                  preloadImg.onload = () => {
+                    if (spinner) spinner.style.display = 'none';
+                    if (errorMsg) errorMsg.style.display = 'none';
+                    img.src = imagePath;
+                    img.style.display = 'block';
+                    img.style.opacity = '1';
+                  };
+                  preloadImg.onerror = () => {
+                    if (spinner) spinner.style.display = 'none';
+                    if (errorMsg) {
+                      errorMsg.textContent = '图片加载失败';
+                      errorMsg.style.display = 'block';
+                    }
+                    img.style.display = 'none';
+                  };
+                  preloadImg.src = imagePath;
+                }
+              }, 0);
+            }
+          }
+        } catch (error) {
+          console.error('处理图片时出错:', error);
+          contentDiv.innerHTML = '<p class="error-message">图片处理失败</p>';
+        }
       } else {
-        // 所有项目都已渲染完毕，注册事件
-        registerEvent.registerHistoryItemEvent();
+        contentDiv.innerHTML = contentTools.renderOtherContent(historyItem);
       }
-    };
 
-    // 开始渲染第一批
-    renderBatch();
+      // 添加操作按钮
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'actions';
+      actionsDiv.innerHTML = `
+        <button class="copy-btn" history-id="${historyID}">复制</button>
+        <button class="export-btn" history-id="${historyID}">导出</button>
+        <button class="favorite-btn" history-id="${historyID}">收藏</button>
+        <button class="ocr-btn" history-id="${historyID}">OCR</button>
+        <span class="timestamp">${new Date(historyItem.timestamp).toLocaleString()}</span>
+      `;
+
+      itemElement.appendChild(contentDiv);
+      itemElement.appendChild(actionsDiv);
+      fragment.appendChild(itemElement);
+    });
+
+    // 添加所有元素
+    historyElement.appendChild(fragment);
+
+    // 注册事件监听器
+    registerEvent.registerHistoryItemEvent();
+  }
+
+  destroy() {
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
   }
 
   searchHistory(keyword) {
@@ -1298,54 +1454,114 @@ class FavoritesList {
     const favoritesElement = document.getElementById("favorites");
     favoritesElement.innerHTML = ""; // 清空现有内容
 
-    const batchSize = 10; // 每批渲染的项目数
-    let currentIndex = 0;
+    const fragment = document.createDocumentFragment();
 
-    const renderBatch = () => {
-      const fragment = document.createDocumentFragment();
-      const endIndex = Math.min(currentIndex + batchSize, ids.length);
+    ids.forEach(favoritesID => {
+      const favoritesItem = favoritesListDataMap[favoritesID];
+      if (!favoritesItem) return;
 
-      for (let i = currentIndex; i < endIndex; i++) {
-        const favoritesID = ids[i];
-        const favoritesItem = favoritesListDataMap[favoritesID];
-        if (favoritesItem == null) continue;
+      const itemElement = document.createElement("div");
+      itemElement.className = "history-item favorite-item";
+      itemElement.setAttribute("favorites-id", favoritesID);
 
-        const itemElement = document.createElement("div");
-        itemElement.className = "history-item favorite-item";
-        itemElement.setAttribute("favorites-id", favoritesID);
-        itemElement.innerHTML = `
-          <div class="content">
-            ${contentTools.renderContent(favoritesItem)}
-          </div>
-          <div class="tags">
-            ${this._renderTags(favoritesItem.tags)}
-          </div>
-          <div class="actions">
-            <button class="copy-btn" favorites-id="${favoritesID}">复制</button>
-            <button class="remove-favorite-btn" favorites-id="${favoritesID}">取消收藏</button>
-            <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
-            <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
-            <button class="ocr-btn" favorites-id="${favoritesID}">OCR</button>
-            <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
-          </div>
-        `;
-        fragment.appendChild(itemElement);
-      }
+      // 准备内容容器
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "content";
 
-      favoritesElement.appendChild(fragment);
-      currentIndex = endIndex;
+      if (favoritesItem.type === "image") {
+        try {
+          const imagePath = favoritesItem.content;
+          if (!imagePath) {
+            contentDiv.innerHTML = '<p class="error-message">无效的图片路径</p>';
+          } else {
+            // 检查文件是否存在
+            const pathWithoutProtocol = imagePath.replace(/^file:\/\//g, '');
+            const fileExists = window.preload.ReadImageFile(pathWithoutProtocol);
 
-      if (currentIndex < ids.length) {
-        // 如果还有更多项目要渲染，安排下一批
-        requestAnimationFrame(renderBatch);
+            if (!fileExists) {
+              contentDiv.innerHTML = '<p class="error-message">图片文件不存在</p>';
+            } else {
+              const containerId = `image-container-fav-${favoritesID}`;
+              const imageId = `img-fav-${favoritesID}`;
+              
+              contentDiv.innerHTML = `
+                <div class="image-container" id="${containerId}">
+                  <div class="loading-spinner" style="display: block;"></div>
+                  <img id="${imageId}"
+                       class="clipboard-image"
+                       alt="剪贴板图片" 
+                       style="max-width: 100%; max-height: 100px; display: none; opacity: 0;"
+                       loading="lazy">
+                  <p class="error-message" style="display: none;">无法加载图片</p>
+                </div>
+              `;
+
+              // 等待 DOM 更新后加载图片
+              setTimeout(() => {
+                const container = document.getElementById(containerId);
+                const img = document.getElementById(imageId);
+                const spinner = container?.querySelector('.loading-spinner');
+                const errorMsg = container?.querySelector('.error-message');
+
+                if (img && container) {
+                  // 创建预加载图片
+                  const preloadImg = new Image();
+                  preloadImg.onload = () => {
+                    if (spinner) spinner.style.display = 'none';
+                    if (errorMsg) errorMsg.style.display = 'none';
+                    img.src = imagePath;
+                    img.style.display = 'block';
+                    img.style.opacity = '1';
+                  };
+                  preloadImg.onerror = () => {
+                    if (spinner) spinner.style.display = 'none';
+                    if (errorMsg) {
+                      errorMsg.textContent = '图片加载失败';
+                      errorMsg.style.display = 'block';
+                    }
+                    img.style.display = 'none';
+                  };
+                  preloadImg.src = imagePath;
+                }
+              }, 0);
+            }
+          }
+        } catch (error) {
+          console.error('处理图片时出错:', error);
+          contentDiv.innerHTML = '<p class="error-message">图片处理失败</p>';
+        }
       } else {
-        // 所项目都已渲染完毕，注册事件
-        registerEvent.registerFavoritesItemEvent();
+        contentDiv.innerHTML = contentTools.renderContent(favoritesItem);
       }
-    };
 
-    // 开始渲染第一批
-    renderBatch();
+      // 添加标签
+      const tagsDiv = document.createElement("div");
+      tagsDiv.className = "tags";
+      tagsDiv.innerHTML = this._renderTags(favoritesItem.tags);
+
+      // 添加操作按钮
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "actions";
+      actionsDiv.innerHTML = `
+        <button class="copy-btn" favorites-id="${favoritesID}">复制</button>
+        <button class="remove-favorite-btn" favorites-id="${favoritesID}">取消收藏</button>
+        <button class="edit-tags-btn" favorites-id="${favoritesID}">编辑标签</button>
+        <button class="open-link-btn" favorites-id="${favoritesID}">打开链接</button>
+        <button class="ocr-btn" favorites-id="${favoritesID}">OCR</button>
+        <span class="timestamp">${new Date(favoritesItem.timestamp).toLocaleString()}</span>
+      `;
+
+      itemElement.appendChild(contentDiv);
+      itemElement.appendChild(tagsDiv);
+      itemElement.appendChild(actionsDiv);
+      fragment.appendChild(itemElement);
+    });
+
+    // 添加所有元素
+    favoritesElement.appendChild(fragment);
+
+    // 注册事件监听器
+    registerEvent.registerFavoritesItemEvent();
   }
 
   _renderTags(tags) {
@@ -1669,3 +1885,4 @@ function initAPP() {
 }
 
 initAPP();
+
